@@ -1,0 +1,51 @@
+name: Build and Release Executable
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on version tags
+
+jobs:
+  build-and-release:
+    strategy:
+      matrix:
+        # Define the operating systems to build on
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    
+    runs-on: ${{ matrix.os }} # Run the job on the specified OS from the matrix
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10' # Specify a Python version
+
+      - name: Install dependencies
+        run: pip install pyinstaller
+
+      - name: Set executable name based on OS
+        id: set-name
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            echo "EXECUTABLE_NAME=endnote-exporter.exe" >> $GITHUB_ENV
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            echo "EXECUTABLE_NAME=endnote-exporter" >> $GITHUB_ENV
+          else
+            echo "EXECUTABLE_NAME=endnote-exporter" >> $GITHUB_ENV
+          fi
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --onefile --windowed --name "${{ env.EXECUTABLE_NAME }}" endnote_exporter_gui.py
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        # Each job in the matrix will upload its file to the same release
+        with:
+          name: Release ${{ github.ref_name }}
+          files: |
+            dist/${{ env.EXECUTABLE_NAME }}*
