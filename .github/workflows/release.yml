@@ -1,5 +1,3 @@
-name: Build and Release Executable
-
 on:
   push:
     tags:
@@ -7,12 +5,14 @@ on:
 
 jobs:
   build-and-release:
+    permissions:
+      contents: write 
+
     strategy:
       matrix:
-        # Define the operating systems to build on
         os: [windows-latest, macos-latest, ubuntu-latest]
     
-    runs-on: ${{ matrix.os }} # Run the job on the specified OS from the matrix
+    runs-on: ${{ matrix.os }} 
 
     steps:
       - name: Checkout code
@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10' # Specify a Python version
+          python-version: '3.10'
 
       - name: Install dependencies
         run: pip install pyinstaller
@@ -42,10 +42,24 @@ jobs:
         run: |
           pyinstaller --onefile --windowed --name "${{ env.EXECUTABLE_NAME }}" endnote_exporter.py
 
+      - name: Package macOS App
+        if: runner.os == 'macOS'
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent "dist/${{ env.EXECUTABLE_NAME }}.app" "dist/${{ env.EXECUTABLE_NAME }}.zip"
+          echo "ARCHIVE_NAME=${{ env.EXECUTABLE_NAME }}.zip" >> $GITHUB_ENV
+
+      - name: Set Final Asset Path
+        id: set-asset-path
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            echo "ASSET_PATH=dist/${{ env.ARCHIVE_NAME }}" >> $GITHUB_ENV
+          else
+            echo "ASSET_PATH=dist/${{ env.EXECUTABLE_NAME }}" >> $GITHUB_ENV
+          fi
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
-        # Each job in the matrix will upload its file to the same release
         with:
           name: Release ${{ github.ref_name }}
-          files: |
-            dist/${{ env.EXECUTABLE_NAME }}*
+          files: ${{ env.ASSET_PATH }}
