@@ -40,7 +40,7 @@ jobs:
 
       - name: Build with PyInstaller
         run: |
-          pyinstaller --onefile --windowed --name "${{ env.EXECUTABLE_NAME }}" endnote_exporter_gui.py
+          pyinstaller --onefile --windowed --name "${{ env.EXECUTABLE_NAME }}" endnote_exporter.py
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
