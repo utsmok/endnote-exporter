@@ -31,11 +31,11 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            echo "EXECUTABLE_NAME=endnote-exporter.exe" >> $GITHUB_ENV
+            echo "EXECUTABLE_NAME=endnote-exporter-win.exe" >> $GITHUB_ENV
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            echo "EXECUTABLE_NAME=endnote-exporter" >> $GITHUB_ENV
+            echo "EXECUTABLE_NAME=endnote-exporter-mac" >> $GITHUB_ENV
           else
-            echo "EXECUTABLE_NAME=endnote-exporter" >> $GITHUB_ENV
+            echo "EXECUTABLE_NAME=endnote-exporter-unix" >> $GITHUB_ENV
           fi
 
       - name: Build with PyInstaller
