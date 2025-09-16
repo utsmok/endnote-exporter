@@ -1,0 +1,11 @@
+*.xml
+__pycache__/
+*.pyc
+*.csv
+*.lock
+testscript.py
+.venv/
+.ruff_cache/
+log/
+logs/
+xmls/

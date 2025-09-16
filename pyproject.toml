@@ -1,0 +1,14 @@
+[project]
+name = "endnote-exporter"
+version = "1.1.0"
+authors = [
+    { name = "Samuel Mok", email = "s.mok@utwente.nl" }
+]
+requires-python = ">=3.12"
+
+
+[dependency-groups]
+dev = [
+    "loguru>=0.7.3",
+    "ruff>=0.13.0",
+]
