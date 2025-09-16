@@ -11,7 +11,7 @@ jobs:
       matrix:
         # Define the operating systems to build on
         os: [windows-latest, macos-latest, ubuntu-latest]
-    
+
     runs-on: ${{ matrix.os }} # Run the job on the specified OS from the matrix
 
     steps:
@@ -40,7 +40,7 @@ jobs:
 
       - name: Build with PyInstaller
         run: |
-          pyinstaller --onefile --windowed --name "${{ env.EXECUTABLE_NAME }}" endnote_exporter.py
+          pyinstaller --onefile --windowed --name "${{ env.EXECUTABLE_NAME }}" gui.py
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
