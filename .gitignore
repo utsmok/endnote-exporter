@@ -10,3 +10,9 @@ log/
 logs/
 xmls/
 scripts/
+dist/
+build/
+*.json
+*.jsonl
+*.spec
+*.log
