@@ -212,7 +212,6 @@ class EndnoteExporter:
                         logger.error(f"Error converting record_dict to XML for reference ID {ref.get('id')}: {e}\nSkipping this record.")
                         continue
             try:
-                 pretty_xml = minidom.parseString(
                 pretty_xml = minidom.parseString(
                     ET.tostring(xml_root, "utf-8")
                 ).toprettyxml(indent="  ")
