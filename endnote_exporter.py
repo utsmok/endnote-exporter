@@ -739,7 +739,7 @@ def format_timestamp(ts):
         return None, None
 
 
-def safe_str(input: str) -> str:
+def safe_str(input) -> str:
     """
     Takes in a value and returns a string with all XML-illegal characters removed.
 
@@ -747,12 +747,14 @@ def safe_str(input: str) -> str:
     the allowed Unicode ranges). Any character outside those ranges will be
     removed. The result is stripped of leading/trailing whitespace.
     """
+    if input is None:
+        return ""
     try:
-        return INVALID_XML_REGEX.sub("", input.strip()) or ""
-    except Exception:
+        s = str(input).strip()
+        return INVALID_XML_REGEX.sub("", s) or ""
+    except (AttributeError, TypeError) as e:
         logger.warning(f"Error sanitizing string for XML: {input}")
         return ""
-
 
 # For backward compatibility, keep the function
 def export_references_to_xml(enl_file_path: Path, output_file: Path):
