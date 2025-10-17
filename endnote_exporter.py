@@ -703,11 +703,7 @@ def create_xml_element(parent, tag, text=None, attrib=None):
         attrib = {}
 
     # sanitize attribute values to remove illegal XML chars
-    safe_attrib = {}
-    for k, v in attrib.items():
-        if v is None:
-            continue
-        safe_attrib[k] = safe_str(v)
+    safe_attrib = {k: safe_str(v) for k, v in attrib.items() if v is not None}
 
     el = ET.SubElement(parent, tag, safe_attrib)
     if text is not None:
