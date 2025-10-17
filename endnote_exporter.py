@@ -6,6 +6,7 @@ from xml.dom import minidom
 from xml.sax.saxutils import escape
 from datetime import datetime
 import json
+import re
 from typing import Any
 from loguru import logger
 import sys
@@ -22,24 +23,7 @@ else:
 _LOG_DIR = Path(application_path).parent
 _LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-# Configure standard library logging (avoid external dependency on loguru)
 logfile = _LOG_DIR / "endnote_exporter.log"
-
-
-# Transform the standard pyton logging code to use loguru
-# Console handler (INFO+)
-#ch = logging.StreamHandler(sys.stderr)
-#ch.setLevel(logging.INFO)
-#console_fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-#ch.setFormatter(console_fmt)
-#logger.addHandler(ch)
-#
-# File handler (DEBUG+)
-#fh = logging.FileHandler(str(logfile), encoding="utf-8")
-#fh.setLevel(logging.DEBUG)
-#file_fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-#fh.setFormatter(file_fmt)
-#logger.addHandler(fh)
 
 
 logger.remove()
@@ -58,6 +42,19 @@ logger.add(
 
 # JSONL sink for comparisons only. We use serialize=True so records are JSON.
 comparisons_file = _LOG_DIR / "comparisons.jsonl"
+
+# Compiled regex for removing invalid XML characters
+# Build a character class of invalid ranges and remove them via re.sub.
+# Valid ranges: \t\n\r\x20-\uD7FF\uE000-\uFFFD and beyond BMP.
+# We'll remove any char not in the allowed set.
+# Note: Python's re doesn't support codepoints above \uFFFF in character
+# classes on narrow builds, but modern Python on Windows is wide and will
+# handle supplementary planes. We'll include the common ranges here.
+
+INVALID_XML_REGEX = re.compile(
+    r"[^	\n\r\u0020-\uD7FF\uE000-\uFFFD]",
+    flags=re.UNICODE,
+)
 
 # Best-effort mapping from internal reference_type codes to EndNote ref-type codes
 # This was inferred from the sample CSV vs EndNote XML. Adjust as needed.
@@ -215,6 +212,7 @@ class EndnoteExporter:
                         logger.error(f"Error converting record_dict to XML for reference ID {ref.get('id')}: {e}\nSkipping this record.")
                         continue
             try:
+                 pretty_xml = minidom.parseString(
                 pretty_xml = minidom.parseString(
                     ET.tostring(xml_root, "utf-8")
                 ).toprettyxml(indent="  ")
@@ -703,11 +701,16 @@ def create_xml_element(parent, tag, text=None, attrib=None):
     """
     if attrib is None:
         attrib = {}
-    el = ET.SubElement(parent, tag, attrib)
+
+    # sanitize attribute values to remove illegal XML chars
+    safe_attrib = {k: safe_str(v) for k, v in attrib.items() if v is not None}
+
+    el = ET.SubElement(parent, tag, safe_attrib)
     if text is not None:
-        # Escape special XML characters in text
-        #el.text = escape(str(text))
-        el.text = str(text)
+        # sanitize text for XML legality
+        cleaned = safe_str(text)
+        # only set text when there's something to set; keep empty string to preserve element
+        el.text = cleaned
     return el
 
 
@@ -731,6 +734,23 @@ def format_timestamp(ts):
         # cannot parse timestamp; return None
         return None, None
 
+
+def safe_str(input) -> str:
+    """
+    Takes in a value and returns a string with all XML-illegal characters removed.
+
+    This follows the XML 1.0 valid character ranges (tab, LF, CR, and
+    the allowed Unicode ranges). Any character outside those ranges will be
+    removed. The result is stripped of leading/trailing whitespace.
+    """
+    if input is None:
+        return ""
+    try:
+        s = str(input).strip()
+        return INVALID_XML_REGEX.sub("", s) or ""
+    except (AttributeError, TypeError) as e:
+        logger.warning(f"Error sanitizing string for XML: {input}")
+        return ""
 
 # For backward compatibility, keep the function
 def export_references_to_xml(enl_file_path: Path, output_file: Path):
