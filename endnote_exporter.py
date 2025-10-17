@@ -3,35 +3,58 @@ from collections import defaultdict
 import sqlite3
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
+from xml.sax.saxutils import escape
 from datetime import datetime
-import logging
-import sys
 import json
-from typing import Any, List, Optional
+from typing import Any
+from loguru import logger
+import sys
 
 # Configure logging sinks and formats
 # Ensure a logs folder exists
-_LOG_DIR = Path(__file__).parent / "logs"
+if getattr(sys, 'frozen', False):
+    # If the application is run as a bundle, the PyInstaller bootloader
+    # extends the sys module by a flag frozen=True and sets the app
+    # path into variable _MEIPASS'.
+    application_path = sys.executable
+else:
+    application_path = __file__
+_LOG_DIR = Path(application_path).parent
 _LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Configure standard library logging (avoid external dependency on loguru)
 logfile = _LOG_DIR / "endnote_exporter.log"
-logger = logging.getLogger("endnote_exporter")
-logger.setLevel(logging.DEBUG)
 
+
+# Transform the standard pyton logging code to use loguru
 # Console handler (INFO+)
-ch = logging.StreamHandler(sys.stderr)
-ch.setLevel(logging.INFO)
-console_fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-ch.setFormatter(console_fmt)
-logger.addHandler(ch)
-
+#ch = logging.StreamHandler(sys.stderr)
+#ch.setLevel(logging.INFO)
+#console_fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+#ch.setFormatter(console_fmt)
+#logger.addHandler(ch)
+#
 # File handler (DEBUG+)
-fh = logging.FileHandler(str(logfile), encoding="utf-8")
-fh.setLevel(logging.DEBUG)
-file_fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-fh.setFormatter(file_fmt)
-logger.addHandler(fh)
+#fh = logging.FileHandler(str(logfile), encoding="utf-8")
+#fh.setLevel(logging.DEBUG)
+#file_fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+#fh.setFormatter(file_fmt)
+#logger.addHandler(fh)
+
+
+logger.remove()
+
+logger.add(
+    str(logfile),
+    level="TRACE",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {function}:{name}:{line} |  {message}",
+    encoding="utf-8",
+    rotation="10 MB",
+    enqueue=True,
+    colorize=False,
+    backtrace=True,
+    diagnose=True,
+)
 
 # JSONL sink for comparisons only. We use serialize=True so records are JSON.
 comparisons_file = _LOG_DIR / "comparisons.jsonl"
@@ -77,7 +100,7 @@ JOURNAL_ABBREVS = {
 }
 
 
-def _split_keywords(raw: Optional[str]) -> List[str]:
+def _split_keywords(raw: str | None) -> list[str]:
     if not raw:
         return []
     s = str(raw)
@@ -90,7 +113,7 @@ def _split_keywords(raw: Optional[str]) -> List[str]:
     return [s.strip()]
 
 
-def _is_reasonable_abbr(s: Optional[str]) -> bool:
+def _is_reasonable_abbr(s: str | None) -> bool:
     """Return True if string s looks like a reasonable abbreviation (short, mostly ASCII letters/digits/punct)."""
     if not s:
         return False
@@ -107,7 +130,7 @@ def _is_reasonable_abbr(s: Optional[str]) -> bool:
     return True
 
 
-def _ensure_list(x: Any) -> List:
+def _ensure_list(x: Any) -> list[Any]:
     if x is None:
         return []
     if isinstance(x, list):
@@ -122,6 +145,7 @@ class EndnoteExporter:
 
         Takes the full path to the .enl file as input.
         """
+        logger.debug(f'Starting export for {enl_file_path} to {output_file}')
         return self._export(enl_file_path, output_file)
 
     def _export(self, enl_file_path: Path, output_file: Path):
@@ -140,6 +164,8 @@ class EndnoteExporter:
             logger.error(error_msg)
             raise FileNotFoundError(error_msg)
 
+        logger.debug(f"Using database at {db_path}")
+
         try:
             con = sqlite3.connect(db_path)
             cur = con.cursor()
@@ -155,28 +181,77 @@ class EndnoteExporter:
             for ref_id, path in all_files:
                 file_mapping[ref_id].append(path)
 
+            logger.debug(f"Found {len(all_refs)} references and {len(all_files)} files in the database.")
+
             xml_root = ET.Element("xml")
             records = create_xml_element(xml_root, "records")
 
             # Open the comparisons_file once before the loop
             with open(comparisons_file, "a", encoding="utf-8") as comp_f:
+                logger.debug(f'Starting parsing the data to create the xml file and comparisons.')
+                logger.debug(f"Writing comparisons to {comparisons_file}. Should have {len(all_refs)} entries.")
+                logger.debug(f'Writing output XML to {output_path}.')
                 for row in all_refs:
                     ref = dict(zip(col_names, row))
 
-                    record_dict = self._build_record_dict(ref, file_mapping, data_path)
-                    comparison = self._create_comparison(ref, record_dict)
+                    try:
+                        record_dict = self._build_record_dict(ref, file_mapping, data_path)
+                    except Exception as e:
+                        logger.error(f"Error building record_dict for reference ID {ref.get('id')}: {e}\nSkipping this record.")
+                        continue
+                    try:
+                        comparison = self._create_comparison(ref, record_dict)
+                    except Exception as e:
+                        logger.error(f"Error creating comparison for reference ID {ref.get('id')}: {e}\nSkipping comparison for this record.")
+                        comparison = {}
 
                     json.dump(comparison, fp=comp_f, ensure_ascii=False)
                     comp_f.write("\n")
 
                     # Build XML node for this record immediately
-                    self._dict_to_xml(record_dict, records)
+                    try:
+                        self._dict_to_xml(record_dict, records)
+                    except Exception as e:
+                        logger.error(f"Error converting record_dict to XML for reference ID {ref.get('id')}: {e}\nSkipping this record.")
+                        continue
+            try:
+                pretty_xml = minidom.parseString(
+                    ET.tostring(xml_root, "utf-8")
+                ).toprettyxml(indent="  ")
+            except Exception as e:
+                logger.error(f"Error generating pretty XML: {e}\nWriting raw XML instead.")
+                try:
+                    pretty_xml = ET.tostring(xml_root, encoding="utf-8").decode("utf-8")
+                except Exception as e2:
+                    logger.error(f"Error generating raw XML: {e2}\nTrying string escape??")
+                    try:
+                        pretty_xml = escape(ET.tostring(xml_root).decode("utf-8"))
+                    except Exception as e3:
+                        pretty_xml = ""
+                        logger.error(e3)
+                        logger.error(f"Error generating escaped XML. To debug, iterate over the XML records and try to write them one by one until it fails, then add the problematic record to a skip list & include it in the logs.")
 
-            pretty_xml = minidom.parseString(
-                ET.tostring(xml_root, "utf-8")
-            ).toprettyxml(indent="  ")
-            with open(output_path, "w", encoding="utf-8") as f:
-                f.write(pretty_xml)
+                        for child in xml_root.findall("records/record"):
+                            try:
+                                record = ET.tostring(child, encoding="utf-8").decode("utf-8")
+                            except Exception as e4:
+                                logger.error(f"Error generating XML for child element {child.tag}: {e4}")
+                                logger.error(f"Child element: {child.text=}, {child.tag=}, {child.attrib=}")
+                                logger.error(f"grandchildren:")
+                                for gc in child:
+                                    logger.error(f"grandchild element: {gc.text=}, {gc.tag=}, {gc.attrib=}")
+                                    # if gc has children, log them too
+                                    for ggc in gc:
+                                        logger.error(f"great grandchild element: {ggc.text=}, {ggc.tag=}, {ggc.attrib=}")
+                                continue
+                            pretty_xml += record + "\n"
+
+            if pretty_xml:
+                with open(output_path, "w", encoding="utf-8") as f:
+                    f.write(pretty_xml)
+            else:
+                logger.error("No XML content generated; output file not written.")
+                return 0, None
 
             logger.info(f"Exported {len(all_refs)} references to {output_path}")
 
@@ -185,6 +260,7 @@ class EndnoteExporter:
         finally:
             if "con" in locals() and con:
                 con.close()
+            logger.debug("Database connection closed.")
 
     def _build_record_dict(self, ref, file_mapping, data_path):
         record = {}
@@ -195,6 +271,7 @@ class EndnoteExporter:
             raw_ref_type = int(ref.get("reference_type", 0) or 0)
         except Exception:
             raw_ref_type = 0
+            logger.warning(f"Invalid reference_type value: {ref.get('reference_type')}")
         mapped = ENDNOTE_REF_TYPE_MAP.get(raw_ref_type, raw_ref_type)
         record["ref-type"] = {"value": mapped, "name": REF_TYPE_NAMES.get(mapped, "")}
 
@@ -263,7 +340,7 @@ class EndnoteExporter:
 
         # Only emit periodical for clear serial/journal types or when the
         # secondary_title looks like a journal/series name.
-        def _looks_like_periodical(title: Optional[str]) -> bool:
+        def _looks_like_periodical(title: str) -> bool:
             if not title:
                 return False
             t = title.lower()
@@ -324,6 +401,7 @@ class EndnoteExporter:
                     record["alt-periodical"] = alt
             except Exception:
                 record["alt-periodical"] = {"full-title": alt_title}
+                logger.warning(f"Error processing alt-title/abbreviation for record ID {ref.get('id')}; using alt-title only.")
         else:
             # attach short_title as an abbreviation under periodical when periodical exists
             if short_title and "periodical" in record and isinstance(short_title, str) and _is_reasonable_abbr(short_title):
@@ -412,6 +490,7 @@ class EndnoteExporter:
                     record["access-date"] = str(access_raw)
             except Exception:
                 record["access-date"] = str(access_raw)
+                logger.warning(f"Error processing access_date value '{access_raw}' for record ID {ref.get('id')}; using raw string.")
 
         original_notes = ref.get("notes", "")
         date_metadata = []
@@ -429,6 +508,9 @@ class EndnoteExporter:
         return record
 
     def _dict_to_xml(self, record_dict, parent):
+
+
+
         record = create_xml_element(parent, "record")
 
         create_xml_element(record, "rec-number", record_dict.get("rec-number"))
@@ -623,6 +705,8 @@ def create_xml_element(parent, tag, text=None, attrib=None):
         attrib = {}
     el = ET.SubElement(parent, tag, attrib)
     if text is not None:
+        # Escape special XML characters in text
+        #el.text = escape(str(text))
         el.text = str(text)
     return el
 
@@ -803,50 +887,50 @@ class XMLComparator:
             detailed.append(rec_report)
 
         # Print detailed report
-        print("\nXML Comparison Report")
-        print("=========================================")
-        print(f"Endnote XML: {self.endnote_xml} ({len(keys_a)} records)")
-        print(f"Custom XML: {self.custom_xml} ({len(keys_b)} records)")
-        print(f"Matched records: {len(matched)}")
-        print(f"Only in Endnote XML: {len(only_a)}; Only in Custom XML: {len(only_b)}")
+        logger.debug("\nXML Comparison Report")
+        logger.debug("=========================================")
+        logger.debug(f"Endnote XML: {self.endnote_xml} ({len(keys_a)} records)")
+        logger.debug(f"Custom XML: {self.custom_xml} ({len(keys_b)} records)")
+        logger.debug(f"Matched records: {len(matched)}")
+        logger.debug(f"Only in Endnote XML: {len(only_a)}; Only in Custom XML: {len(only_b)}")
 
         if only_a:
-            print("\nRecords only in Endnote XML (sample up to 10):")
+            logger.debug("\nRecords only in Endnote XML (sample up to 10):")
             for k in list(only_a)[:10]:
-                print(f" - {k}")
+                logger.debug(f" - {k}")
         if only_b:
-            print("\nRecords only in Custom XML (sample up to 10):")
+            logger.debug("\nRecords only in Custom XML (sample up to 10):")
             for k in list(only_b)[:10]:
-                print(f" - {k}")
+                logger.debug(f" - {k}")
 
-        print("\nPer-record differences for matched records:")
+        logger.debug("\nPer-record differences for matched records:")
         for rec in detailed:
             if rec["missing_in_a"] or rec["missing_in_b"] or rec["diffs"]:
-                print(f"\nRecord: {rec['key']}")
+                logger.debug(f"\nRecord: {rec['key']}")
                 if rec["missing_in_a"]:
-                    print(f"  Fields missing in Endnote XML: {rec['missing_in_a']}")
+                    logger.debug(f"  Fields missing in Endnote XML: {rec['missing_in_a']}")
                 if rec["missing_in_b"]:
-                    print(f"  Fields missing in Custom XML: {rec['missing_in_b']}")
+                    logger.debug(f"  Fields missing in Custom XML: {rec['missing_in_b']}")
                 if rec["diffs"]:
-                    print("  Content differences:")
+                    logger.debug("  Content differences:")
                     for f, vals in rec["diffs"].items():
-                        print(
+                        logger.debug(
                             f"    - {f}:\n      Endnote: {vals['a']}\n      Custom: {vals['b']}"
                         )
 
         # Core summary
-        print("\nCore summary:")
-        print("-----------------------------------------")
-        print(f"Total records Endnote: {len(keys_a)}")
-        print(f"Total records Custom: {len(keys_b)}")
-        print(
+        logger.debug("\nCore summary:")
+        logger.debug("-----------------------------------------")
+        logger.debug(f"Total records Endnote: {len(keys_a)}")
+        logger.debug(f"Total records Custom: {len(keys_b)}")
+        logger.debug(
             f"Matched: {len(matched)}; Only Endnote: {len(only_a)}; Only Custom: {len(only_b)}"
         )
-        print("\nTop field-level issues:")
+        logger.debug("\nTop field-level issues:")
         for (field, issue), count in sorted(
             field_diff_counts.items(), key=lambda x: -x[1]
         ):
-            print(f" - {field} ({issue}): {count}")
+            logger.debug(f" - {field} ({issue}): {count}")
 
         # Now print a list of fields missing in B but present in A
 
@@ -860,16 +944,16 @@ class XMLComparator:
             if field not in self.ignore_fields and issue == "missing_in_a":
                 missing_a_fields.add(field)
 
-        print("\nFields present in Custom XML but missing in Endnote XML:")
-        print("\n".join(sorted(missing_a_fields)))
-        print("\nFields present in Endnote XML but missing in Custom XML:")
-        print("\n".join(sorted(missing_b_fields)))
+        logger.debug("\nFields present in Custom XML but missing in Endnote XML:")
+        logger.debug("\n".join(sorted(missing_a_fields)))
+        logger.debug("\nFields present in Endnote XML but missing in Custom XML:")
+        logger.debug("\n".join(sorted(missing_b_fields)))
 
-        print("\nAll fields in Endnote XML:")
-        print("\n".join(sorted(a_fields)))
+        logger.debug("\nAll fields in Endnote XML:")
+        logger.debug("\n".join(sorted(a_fields)))
 
-        print("\nAll fields in Custom XML:")
-        print("\n".join(sorted(b_fields)))
+        logger.debug("\nAll fields in Custom XML:")
+        logger.debug("\n".join(sorted(b_fields)))
         return {
             "counts": {
                 "endnote": len(keys_a),

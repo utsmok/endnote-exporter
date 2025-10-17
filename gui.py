@@ -3,6 +3,10 @@ from tkinter import filedialog, messagebox
 from tkinter import ttk
 from pathlib import Path
 from endnote_exporter import export_references_to_xml
+from loguru import logger
+
+_LOG_DIR = Path(__file__).parent / "logs"
+_LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 class ExporterApp:
     def __init__(self, root):
@@ -60,6 +64,25 @@ class ExporterApp:
             self.select_button.pack_forget()
 
     def run_export(self):
+        def count_errors() -> tuple[int, list[str]]:
+            errors = 0
+            error_lines = []
+            if log_file.exists():
+                with log_file.open("r", encoding="utf-8") as lf:
+                    for line in lf:
+                        if not line:
+                            continue
+                        try:
+                            line = line.strip().split(" | ", 2)[-1]  # Get the message part only
+                        except Exception:
+                            continue
+                        if "warning" in line.lower():
+                            errors += 1
+                            error_lines.append(line.strip())
+                        if "error" in line.lower():
+                            errors += 1
+                            error_lines.append(line.strip())
+            return errors, error_lines
         if not self.enl_file:
             messagebox.showerror("Error", "No .enl file selected.")
             return
@@ -84,10 +107,25 @@ class ExporterApp:
             self.run_button.config(state=tk.DISABLED, text="Exporting...")
             self.root.update_idletasks()
 
+            # read in the current .log file
+            # count the number of lines with 'error' or 'warning' (case insensitive)
+            log_file = _LOG_DIR / "endnote_exporter.log"
+            pre_run_errors, pre_error_lines = count_errors()
             # Pass both the input and output paths to the core function
             count = export_references_to_xml(self.enl_file, output_file)
+            post_run_errors, post_error_lines = count_errors()
+            if post_run_errors > pre_run_errors:
+                if post_run_errors - pre_run_errors < 10:
+                    error_message = "\n".join(post_error_lines[-(post_run_errors - pre_run_errors):])
+                    messagebox.showwarning("Export Completed with Warnings/Errors", f"Export completed with {post_run_errors - pre_run_errors} warnings/errors:\n\n{error_message}\n\nPlease check the log file at {log_file} for more details.")
+                    logger.warning(f"Export completed with {post_run_errors - pre_run_errors} warnings/errors:\n{error_message}")
+                else:
+                    logger.warning(f"Export completed with {post_run_errors - pre_run_errors} warnings/errors. Please check the log file at {log_file} for more details.")
+
+
         except Exception as e:
             messagebox.showerror("Export Failed", f"An error occurred:\n\n{e}")
+            logger.error(f"Error during export: {e}")
             # Reset UI on error
             self.run_button.config(state=tk.NORMAL, text="Export to XML")
             self.label.config(style="TLabel")  # Reset to normal style
