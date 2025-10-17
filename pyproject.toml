@@ -5,6 +5,10 @@ authors = [
     { name = "Samuel Mok", email = "s.mok@utwente.nl" }
 ]
 requires-python = ">=3.12"
+dependencies = [
+    "loguru>=0.7.3",
+    "pyinstaller>=6.16.0",
+]
 
 
 [dependency-groups]
