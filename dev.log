@@ -1,0 +1,35 @@
+
+> electron-vite-react@1.0.0 dev
+> electron-vite dev
+
+vite v4.5.14 building for development...
+transforming...
+✓ 547 modules transformed.
+rendering chunks...
+out/main/index.js  874.02 kB
+✓ built in 5.55s
+
+build the electron main process successfully
+
+-----
+
+vite v4.5.14 building for development...
+transforming...
+✓ 2 modules transformed.
+rendering chunks...
+out/preload/index.js  1.54 kB
+✓ built in 31ms
+
+build the electron preload files successfully
+
+-----
+
+dev server running for the electron renderer process at:
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+
+start electron app...
+
+[75317:0124/132243.375666:ERROR:ozone_platform_x11.cc(240)] Missing X server or $DISPLAY
+[75317:0124/132243.376416:ERROR:env.cc(255)] The platform failed to initialize.  Exiting.
