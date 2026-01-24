@@ -8,6 +8,7 @@ requires-python = ">=3.12"
 dependencies = [
     "loguru",
     "pyinstaller",
+    "flet",
 ]
 
 
@@ -15,3 +16,6 @@ dependencies = [
 dev = [
     "ruff>=0.13.0",
 ]
+
+[tool.setuptools]
+py-modules = ["main", "endnote_exporter"]
