@@ -41,9 +41,22 @@ jobs:
             echo "EXECUTABLE_NAME=endnote-exporter" >> $GITHUB_ENV
           fi
 
-      - name: Build with PyInstaller
+      - name: Build with PyInstaller (Windows/Linux)
+        if: runner.os != 'macOS'
         run: |
           pyinstaller --onefile --windowed --name "${{ env.EXECUTABLE_NAME }}" gui.py
+
+      - name: Build with PyInstaller (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          pyinstaller --onedir --windowed --name "endnote-exporter" gui.py
+
+      - name: Package macOS app
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          zip -r endnote-exporter-macos.zip endnote-exporter.app
+          echo "EXECUTABLE_NAME=endnote-exporter-macos.zip" >> $GITHUB_ENV
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
