@@ -24,7 +24,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10' # Specify a Python version
+          python-version: '3.12' # Python 3.12+ required by pyproject.toml
 
       - name: Install dependencies
         run: pip install pyinstaller loguru
@@ -50,5 +50,22 @@ jobs:
         # Each job in the matrix will upload its file to the same release
         with:
           name: Release ${{ github.ref_name }}
+          body: |
+            ## Cross-Platform Release
+
+            This release includes executables for **Windows**, **macOS**, and **Linux**.
+
+            ### Features
+            - Cross-platform support (Windows, macOS, Linux)
+            - Supports both `.enl` and `.enlp` (macOS package) EndNote library formats
+            - Platform-aware Documents folder detection (works with non-English Windows)
+            - Case-insensitive `.Data` folder lookup for Linux compatibility
+
+            ### Platform-Specific Notes
+            - **macOS**: Supports both `.enl` and `.enlp` formats. The first run may require security exceptions in System Preferences.
+            - **Linux**: Requires Tkinter to be installed (usually `python3-tk` package). Respects XDG_DOCUMENTS_DIR if set.
+            - **Windows**: Full support including non-English system locales.
+
+            Download the appropriate executable for your platform below.
           files: |
             dist/${{ env.EXECUTABLE_NAME }}*
