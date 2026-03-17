@@ -5,8 +5,15 @@ from pathlib import Path
 from endnote_exporter import export_references_to_xml
 from loguru import logger
 from platform_utils import get_endnote_default_directory
+import sys
 
-_LOG_DIR = Path(__file__).parent / "logs"
+# Use user's home directory for logs (works in frozen executables)
+if getattr(sys, "frozen", False):
+    # Running as compiled executable
+    _LOG_DIR = Path.home() / ".endnote-exporter" / "logs"
+else:
+    # Running from source
+    _LOG_DIR = Path(__file__).parent / "logs"
 _LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 

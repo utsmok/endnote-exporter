@@ -46,17 +46,11 @@ jobs:
         run: |
           pyinstaller --onefile --windowed --name "${{ env.EXECUTABLE_NAME }}" gui.py
 
-      - name: Build with PyInstaller (macOS)
+      - name: Build with PyInstaller (macOS - Universal2)
         if: runner.os == 'macOS'
         run: |
-          pyinstaller --onedir --windowed --name "endnote-exporter" gui.py
-
-      - name: Package macOS app
-        if: runner.os == 'macOS'
-        run: |
-          cd dist
-          zip -r endnote-exporter-macos.zip endnote-exporter.app
-          echo "EXECUTABLE_NAME=endnote-exporter-macos.zip" >> $GITHUB_ENV
+          # Build universal binary that works on both Intel and Apple Silicon
+          pyinstaller --onefile --windowed --target-arch universal2 --name "endnote-exporter" gui.py
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -75,7 +69,9 @@ jobs:
             - Case-insensitive `.Data` folder lookup for Linux compatibility
 
             ### Platform-Specific Notes
-            - **macOS**: Supports both `.enl` and `.enlp` formats. The first run may require security exceptions in System Preferences.
+            - **macOS**: Universal binary (works on both Intel and Apple Silicon). First run requires bypassing Gatekeeper:
+              1. Right-click the app and select **Open**, then click **Open** again
+              2. Or run in Terminal: `xattr -d com.apple.quarantine /path/to/endnote-exporter`
             - **Linux**: Requires Tkinter to be installed (usually `python3-tk` package). Respects XDG_DOCUMENTS_DIR if set.
             - **Windows**: Full support including non-English system locales.
 
