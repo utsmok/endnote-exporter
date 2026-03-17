@@ -4,9 +4,11 @@ from tkinter import ttk
 from pathlib import Path
 from endnote_exporter import export_references_to_xml
 from loguru import logger
+from platform_utils import get_endnote_default_directory
 
 _LOG_DIR = Path(__file__).parent / "logs"
 _LOG_DIR.mkdir(parents=True, exist_ok=True)
+
 
 class ExporterApp:
     def __init__(self, root):
@@ -18,7 +20,9 @@ class ExporterApp:
         # Style for better theming
         style = ttk.Style()
         style.configure("TLabel", font=("TkDefaultFont", 10))
-        style.configure("Status.TLabel", font=("TkDefaultFont", 12, "bold"), foreground="blue")
+        style.configure(
+            "Status.TLabel", font=("TkDefaultFont", 12, "bold"), foreground="blue"
+        )
         style.configure("TButton", font=("TkDefaultFont", 10))
 
         self.label = ttk.Label(
@@ -42,21 +46,24 @@ class ExporterApp:
 
     def select_file(self):
         # The typical EndNote library location is in the user's Documents folder.
-        default_endnote_dir = Path.home() / "Documents" / "EndNote"
-        default_endnote_dir = default_endnote_dir if default_endnote_dir.exists() else Path.home() / "Documents"
-        default_endnote_dir = default_endnote_dir if default_endnote_dir.exists() else Path.home()
+        default_endnote_dir = get_endnote_default_directory()
 
         # If the default directory doesn't exist, filedialog will handle it gracefully.
         file_path = filedialog.askopenfilename(
             title="Select EndNote Library:",
-            initialdir=str(default_endnote_dir)
-            if default_endnote_dir.exists()
-            else Path.home(),
-            filetypes=[("EndNote Library", "*.enl")],
+            initialdir=str(default_endnote_dir),
+            filetypes=[
+                ("EndNote Library", "*.enl"),
+                ("EndNote Library (macOS Package)", "*.enlp"),
+                ("All Files", "*.*"),
+            ],
         )
         if file_path:
             self.enl_file = Path(file_path)
-            self.label.config(text=f"You have selected EndNote Library `{self.enl_file.name}`, stored in {self.enl_file.parent}.", style="Status.TLabel")
+            self.label.config(
+                text=f"You have selected EndNote Library `{self.enl_file.name}`, stored in {self.enl_file.parent}.",
+                style="Status.TLabel",
+            )
             # show the run button after selection
             self.run_button.pack(pady=10)
             self.run_button.config(state=tk.NORMAL)
@@ -73,8 +80,11 @@ class ExporterApp:
                         if not line:
                             continue
                         try:
-                            line = line.strip().split(" | ", 2)[-1]  # Get the message part only
-                        except Exception:
+                            line = line.strip().split(" | ", 2)[
+                                -1
+                            ]  # Get the message part only
+                        except (IndexError, AttributeError) as e:
+                            logger.debug(f"Skipping malformed log line: {e}")
                             continue
                         if "warning" in line.lower():
                             errors += 1
@@ -83,6 +93,7 @@ class ExporterApp:
                             errors += 1
                             error_lines.append(line.strip())
             return errors, error_lines
+
         if not self.enl_file:
             messagebox.showerror("Error", "No .enl file selected.")
             return
@@ -116,12 +127,20 @@ class ExporterApp:
             post_run_errors, post_error_lines = count_errors()
             if post_run_errors > pre_run_errors:
                 if post_run_errors - pre_run_errors < 10:
-                    error_message = "\n".join(post_error_lines[-(post_run_errors - pre_run_errors):])
-                    messagebox.showwarning("Export Completed with Warnings/Errors", f"Export completed with {post_run_errors - pre_run_errors} warnings/errors:\n\n{error_message}\n\nPlease check the log file at {log_file} for more details.")
-                    logger.warning(f"Export completed with {post_run_errors - pre_run_errors} warnings/errors:\n{error_message}")
+                    error_message = "\n".join(
+                        post_error_lines[-(post_run_errors - pre_run_errors) :]
+                    )
+                    messagebox.showwarning(
+                        "Export Completed with Warnings/Errors",
+                        f"Export completed with {post_run_errors - pre_run_errors} warnings/errors:\n\n{error_message}\n\nPlease check the log file at {log_file} for more details.",
+                    )
+                    logger.warning(
+                        f"Export completed with {post_run_errors - pre_run_errors} warnings/errors:\n{error_message}"
+                    )
                 else:
-                    logger.warning(f"Export completed with {post_run_errors - pre_run_errors} warnings/errors. Please check the log file at {log_file} for more details.")
-
+                    logger.warning(
+                        f"Export completed with {post_run_errors - pre_run_errors} warnings/errors. Please check the log file at {log_file} for more details."
+                    )
 
         except Exception as e:
             messagebox.showerror("Export Failed", f"An error occurred:\n\n{e}")
@@ -132,12 +151,12 @@ class ExporterApp:
         else:
             # Success: update UI
             self.run_button.pack_forget()
-            self.label.config(text=f"Success! Exported {count[0]} references.\n\nFile saved to:\n\n{output_file}", style="Status.TLabel")
+            self.label.config(
+                text=f"Success! Exported {count[0]} references.\n\nFile saved to:\n\n{output_file}",
+                style="Status.TLabel",
+            )
             self.select_button.pack(pady=10)
             self.select_button.config(text="Select another library to export")
-
-
-
 
 
 if __name__ == "__main__":
