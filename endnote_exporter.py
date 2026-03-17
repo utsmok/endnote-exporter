@@ -11,9 +11,11 @@ from typing import Any
 from loguru import logger
 import sys
 
+from platform_utils import find_data_folder, validate_file_extension
+
 # Configure logging sinks and formats
 # Ensure a logs folder exists
-if getattr(sys, 'frozen', False):
+if getattr(sys, "frozen", False):
     # If the application is run as a bundle, the PyInstaller bootloader
     # extends the sys module by a flag frozen=True and sets the app
     # path into variable _MEIPASS'.
@@ -60,11 +62,11 @@ INVALID_XML_REGEX = re.compile(
 # This was inferred from the sample CSV vs EndNote XML. Adjust as needed.
 ENDNOTE_REF_TYPE_MAP = {
     # Map raw reference_type (DB) -> EndNote numeric ref-type observed in baseline XML
-    0: 17,   # default -> Journal Article
-    1: 6,    # maps to Book in baseline
-    2: 32,   # maps to Thesis
-    3: 10,   # maps to Conference Proceedings
-    7: 5,    # maps to Book Section
+    0: 17,  # default -> Journal Article
+    1: 6,  # maps to Book in baseline
+    2: 32,  # maps to Thesis
+    3: 10,  # maps to Conference Proceedings
+    7: 5,  # maps to Book Section
     10: 27,  # maps to Report
     22: 31,  # Statute
     31: 13,  # Generic
@@ -118,7 +120,9 @@ def _is_reasonable_abbr(s: str | None) -> bool:
     if len(s) == 0 or len(s) > 40:
         return False
     # require at least one ASCII alnum
-    if not any(('0' <= ch <= '9') or ('A' <= ch <= 'Z') or ('a' <= ch <= 'z') for ch in s):
+    if not any(
+        ("0" <= ch <= "9") or ("A" <= ch <= "Z") or ("a" <= ch <= "z") for ch in s
+    ):
         return False
     # avoid strings that are mostly non-ascii
     non_ascii = sum(1 for ch in s if ord(ch) > 127)
@@ -135,6 +139,44 @@ def _ensure_list(x: Any) -> list[Any]:
     return [x]
 
 
+def _resolve_enl_path(enl_file_path: Path) -> tuple[Path, Path]:
+    """Resolve the actual .enl file and .Data folder path.
+
+    Handles both standard .enl files and macOS .enlp packages.
+
+    Args:
+        enl_file_path: Path to .enl or .enlp file
+
+    Returns:
+        Tuple of (base_path, data_folder_path)
+    """
+    suffix = enl_file_path.suffix.lower()
+
+    if suffix == ".enlp":
+        # macOS package format - look for .enl inside
+        package_dir = enl_file_path
+
+        # Find .enl file inside package
+        enl_files = list(package_dir.glob("*.enl"))
+        if enl_files:
+            actual_enl = enl_files[0]
+            library_name = actual_enl.stem
+            data_path = package_dir / f"{library_name}.Data"
+            return package_dir, data_path
+        else:
+            # Fallback: try to find .Data folder directly
+            data_folders = list(package_dir.glob("*.Data"))
+            if data_folders:
+                return package_dir, data_folders[0]
+            raise FileNotFoundError(
+                f"Could not find .enl file or .Data folder inside .enlp package: {enl_file_path}"
+            )
+    else:
+        # Standard .enl format
+        library_name = enl_file_path.stem
+        data_path = enl_file_path.parent / f"{library_name}.Data"
+        return enl_file_path.parent, data_path
+
 
 class EndnoteExporter:
     def export_references_to_xml(self, enl_file_path: Path, output_file: Path):
@@ -142,18 +184,51 @@ class EndnoteExporter:
 
         Takes the full path to the .enl file as input.
         """
-        logger.debug(f'Starting export for {enl_file_path} to {output_file}')
+        # Validate input file extension
+        if not validate_file_extension(enl_file_path, [".enl", ".enlp"]):
+            raise ValueError(
+                f"Expected EndNote library file (.enl or .enlp), got '{enl_file_path.suffix}'. "
+                f"Please select a valid EndNote library file."
+            )
+
+        # Validate output file extension
+        if output_file and not validate_file_extension(output_file, ".xml"):
+            logger.warning(
+                f"Output file has unexpected extension '{output_file.suffix}'. "
+                f"Expected '.xml'. Proceeding anyway."
+            )
+
+        logger.debug(f"Starting export for {enl_file_path} to {output_file}")
         return self._export(enl_file_path, output_file)
 
     def _export(self, enl_file_path: Path, output_file: Path):
-        base_path = enl_file_path.parent
-        library_name = enl_file_path.stem
+        # Resolve actual paths (handles .enlp packages)
+        base_path, _ = _resolve_enl_path(enl_file_path)
+
+        # For .enlp, we need the library name from inside the package
+        if enl_file_path.suffix.lower() == ".enlp":
+            enl_files = list(enl_file_path.glob("*.enl"))
+            library_name = enl_files[0].stem if enl_files else enl_file_path.stem
+        else:
+            library_name = enl_file_path.stem
+
         output_path = (
             base_path / f"{library_name}_zotero_export.xml"
             if output_file is None
             else output_file
         )
-        data_path = base_path / f"{library_name}.Data"
+
+        # Use case-insensitive lookup for Data folder
+        data_path = find_data_folder(base_path, library_name)
+        if data_path is None:
+            error_msg = (
+                f"Data folder not found for library '{library_name}'. "
+                f"Expected '{library_name}.Data' in {base_path}. "
+                f"Make sure the .Data folder exists alongside the .enl file."
+            )
+            logger.error(error_msg)
+            raise FileNotFoundError(error_msg)
+
         db_path = data_path / "sdb" / "sdb.eni"
 
         if not db_path.exists():
@@ -178,28 +253,40 @@ class EndnoteExporter:
             for ref_id, path in all_files:
                 file_mapping[ref_id].append(path)
 
-            logger.debug(f"Found {len(all_refs)} references and {len(all_files)} files in the database.")
+            logger.debug(
+                f"Found {len(all_refs)} references and {len(all_files)} files in the database."
+            )
 
             xml_root = ET.Element("xml")
             records = create_xml_element(xml_root, "records")
 
             # Open the comparisons_file once before the loop
-            with open(comparisons_file, "a", encoding="utf-8") as comp_f:
-                logger.debug(f'Starting parsing the data to create the xml file and comparisons.')
-                logger.debug(f"Writing comparisons to {comparisons_file}. Should have {len(all_refs)} entries.")
-                logger.debug(f'Writing output XML to {output_path}.')
+            with comparisons_file.open("a", encoding="utf-8") as comp_f:
+                logger.debug(
+                    "Starting parsing the data to create the xml file and comparisons."
+                )
+                logger.debug(
+                    f"Writing comparisons to {comparisons_file}. Should have {len(all_refs)} entries."
+                )
+                logger.debug(f"Writing output XML to {output_path}.")
                 for row in all_refs:
                     ref = dict(zip(col_names, row))
 
                     try:
-                        record_dict = self._build_record_dict(ref, file_mapping, data_path)
+                        record_dict = self._build_record_dict(
+                            ref, file_mapping, data_path
+                        )
                     except Exception as e:
-                        logger.error(f"Error building record_dict for reference ID {ref.get('id')}: {e}\nSkipping this record.")
+                        logger.error(
+                            f"Error building record_dict for reference ID {ref.get('id')}: {e}\nSkipping this record."
+                        )
                         continue
                     try:
                         comparison = self._create_comparison(ref, record_dict)
                     except Exception as e:
-                        logger.error(f"Error creating comparison for reference ID {ref.get('id')}: {e}\nSkipping comparison for this record.")
+                        logger.error(
+                            f"Error creating comparison for reference ID {ref.get('id')}: {e}\nSkipping comparison for this record."
+                        )
                         comparison = {}
 
                     json.dump(comparison, fp=comp_f, ensure_ascii=False)
@@ -209,42 +296,60 @@ class EndnoteExporter:
                     try:
                         self._dict_to_xml(record_dict, records)
                     except Exception as e:
-                        logger.error(f"Error converting record_dict to XML for reference ID {ref.get('id')}: {e}\nSkipping this record.")
+                        logger.error(
+                            f"Error converting record_dict to XML for reference ID {ref.get('id')}: {e}\nSkipping this record."
+                        )
                         continue
             try:
                 pretty_xml = minidom.parseString(
                     ET.tostring(xml_root, "utf-8")
                 ).toprettyxml(indent="  ")
             except Exception as e:
-                logger.error(f"Error generating pretty XML: {e}\nWriting raw XML instead.")
+                logger.error(
+                    f"Error generating pretty XML: {e}\nWriting raw XML instead."
+                )
                 try:
                     pretty_xml = ET.tostring(xml_root, encoding="utf-8").decode("utf-8")
                 except Exception as e2:
-                    logger.error(f"Error generating raw XML: {e2}\nTrying string escape??")
+                    logger.error(
+                        f"Error generating raw XML: {e2}\nTrying string escape??"
+                    )
                     try:
                         pretty_xml = escape(ET.tostring(xml_root).decode("utf-8"))
                     except Exception as e3:
                         pretty_xml = ""
                         logger.error(e3)
-                        logger.error(f"Error generating escaped XML. To debug, iterate over the XML records and try to write them one by one until it fails, then add the problematic record to a skip list & include it in the logs.")
+                        logger.error(
+                            "Error generating escaped XML. To debug, iterate over the XML records and try to write them one by one until it fails, then add the problematic record to a skip list & include it in the logs."
+                        )
 
                         for child in xml_root.findall("records/record"):
                             try:
-                                record = ET.tostring(child, encoding="utf-8").decode("utf-8")
+                                record = ET.tostring(child, encoding="utf-8").decode(
+                                    "utf-8"
+                                )
                             except Exception as e4:
-                                logger.error(f"Error generating XML for child element {child.tag}: {e4}")
-                                logger.error(f"Child element: {child.text=}, {child.tag=}, {child.attrib=}")
-                                logger.error(f"grandchildren:")
+                                logger.error(
+                                    f"Error generating XML for child element {child.tag}: {e4}"
+                                )
+                                logger.error(
+                                    f"Child element: {child.text=}, {child.tag=}, {child.attrib=}"
+                                )
+                                logger.error("grandchildren:")
                                 for gc in child:
-                                    logger.error(f"grandchild element: {gc.text=}, {gc.tag=}, {gc.attrib=}")
+                                    logger.error(
+                                        f"grandchild element: {gc.text=}, {gc.tag=}, {gc.attrib=}"
+                                    )
                                     # if gc has children, log them too
                                     for ggc in gc:
-                                        logger.error(f"great grandchild element: {ggc.text=}, {ggc.tag=}, {ggc.attrib=}")
+                                        logger.error(
+                                            f"great grandchild element: {ggc.text=}, {ggc.tag=}, {ggc.attrib=}"
+                                        )
                                 continue
                             pretty_xml += record + "\n"
 
             if pretty_xml:
-                with open(output_path, "w", encoding="utf-8") as f:
+                with output_path.open("w", encoding="utf-8") as f:
                     f.write(pretty_xml)
             else:
                 logger.error("No XML content generated; output file not written.")
@@ -266,9 +371,11 @@ class EndnoteExporter:
         # Map reference_type to EndNote ref-type where possible
         try:
             raw_ref_type = int(ref.get("reference_type", 0) or 0)
-        except Exception:
+        except (ValueError, TypeError) as e:
             raw_ref_type = 0
-            logger.warning(f"Invalid reference_type value: {ref.get('reference_type')}")
+            logger.warning(
+                f"Invalid reference_type value: {ref.get('reference_type')}: {e}"
+            )
         mapped = ENDNOTE_REF_TYPE_MAP.get(raw_ref_type, raw_ref_type)
         record["ref-type"] = {"value": mapped, "name": REF_TYPE_NAMES.get(mapped, "")}
 
@@ -308,7 +415,11 @@ class EndnoteExporter:
                 sa = ref.get("secondary_author")
                 # normalize into a list of author strings
                 if isinstance(sa, str):
-                    sa_list = [s.strip() for s in sa.replace('\r', '\n').split('\n') if s.strip()]
+                    sa_list = [
+                        s.strip()
+                        for s in sa.replace("\r", "\n").split("\n")
+                        if s.strip()
+                    ]
                 elif isinstance(sa, list):
                     sa_list = sa
                 else:
@@ -357,7 +468,13 @@ class EndnoteExporter:
 
         # Only emit periodical when this record maps to a Journal Article (17).
         # This avoids marking many conference proceedings as periodicals.
-        if ref.get("secondary_title") and (mapped == 17 or (isinstance(ref.get("secondary_title"), str) and "advances in" in ref.get("secondary_title").lower())):
+        if ref.get("secondary_title") and (
+            mapped == 17
+            or (
+                isinstance(ref.get("secondary_title"), str)
+                and "advances in" in ref.get("secondary_title").lower()
+            )
+        ):
             record["periodical"] = {"full-title": ref.get("secondary_title")}
 
         # Additional EndNote-only fields observed in baseline exports
@@ -385,7 +502,9 @@ class EndnoteExporter:
         sec_title = ref.get("secondary_title")
         if alt_title:
             try:
-                if sec_title and len(str(alt_title).strip()) < len(str(sec_title).strip()):
+                if sec_title and len(str(alt_title).strip()) < len(
+                    str(sec_title).strip()
+                ):
                     # treat as abbreviation
                     if "periodical" in record:
                         record["periodical"]["abbr-1"] = alt_title
@@ -393,29 +512,56 @@ class EndnoteExporter:
                         record["alt-periodical"] = {"abbr-1": alt_title}
                 else:
                     alt = {"full-title": alt_title}
-                    if short_title and isinstance(short_title, str) and _is_reasonable_abbr(short_title):
+                    if (
+                        short_title
+                        and isinstance(short_title, str)
+                        and _is_reasonable_abbr(short_title)
+                    ):
                         alt["abbr-1"] = short_title
                     record["alt-periodical"] = alt
-            except Exception:
+            except (KeyError, TypeError, AttributeError) as e:
                 record["alt-periodical"] = {"full-title": alt_title}
-                logger.warning(f"Error processing alt-title/abbreviation for record ID {ref.get('id')}; using alt-title only.")
+                logger.warning(
+                    f"Error processing alt-title/abbreviation for record ID {ref.get('id')}: {e}; using alt-title only."
+                )
         else:
             # attach short_title as an abbreviation under periodical when periodical exists
-            if short_title and "periodical" in record and isinstance(short_title, str) and _is_reasonable_abbr(short_title):
+            if (
+                short_title
+                and "periodical" in record
+                and isinstance(short_title, str)
+                and _is_reasonable_abbr(short_title)
+            ):
                 record["periodical"]["abbr-1"] = short_title
 
         # if the periodical full-title matches a known abbreviation mapping, ensure abbr-1 is set
         if "periodical" in record and record["periodical"].get("full-title"):
             ft = record["periodical"].get("full-title")
-            if not record["periodical"].get("abbr-1") and ft in JOURNAL_ABBREVS and _is_reasonable_abbr(JOURNAL_ABBREVS[ft]):
+            if (
+                not record["periodical"].get("abbr-1")
+                and ft in JOURNAL_ABBREVS
+                and _is_reasonable_abbr(JOURNAL_ABBREVS[ft])
+            ):
                 record["periodical"]["abbr-1"] = JOURNAL_ABBREVS[ft]
 
         # If alt-title matches a known abbreviation for the periodical, also emit alt-periodical
         # but only for journal-like records (mapped==17)
-        if mapped == 17 and alt_title and "periodical" in record and record["periodical"].get("full-title"):
+        if (
+            mapped == 17
+            and alt_title
+            and "periodical" in record
+            and record["periodical"].get("full-title")
+        ):
             ft = record["periodical"].get("full-title")
-            if ft in JOURNAL_ABBREVS and str(alt_title).strip() == JOURNAL_ABBREVS[ft] and _is_reasonable_abbr(JOURNAL_ABBREVS[ft]):
-                record["alt-periodical"] = {"full-title": ft, "abbr-1": JOURNAL_ABBREVS[ft]}
+            if (
+                ft in JOURNAL_ABBREVS
+                and str(alt_title).strip() == JOURNAL_ABBREVS[ft]
+                and _is_reasonable_abbr(JOURNAL_ABBREVS[ft])
+            ):
+                record["alt-periodical"] = {
+                    "full-title": ft,
+                    "abbr-1": JOURNAL_ABBREVS[ft],
+                }
 
         # Do not emit alt-periodical for non-journal records to match baseline behavior
         if mapped != 17 and "alt-periodical" in record:
@@ -436,7 +582,7 @@ class EndnoteExporter:
             # Preserve original address block but normalize line endings to CR to match EndNote exports
             raw_addr = str(ref.get("author_address") or "").strip()
             # convert any CRLF/LF to CR
-            addr = raw_addr.replace('\r\n', '\r').replace('\n', '\r')
+            addr = raw_addr.replace("\r\n", "\r").replace("\n", "\r")
             record["auth-address"] = addr
         if ref.get("custom_1"):
             record["custom1"] = ref.get("custom_1")
@@ -446,7 +592,9 @@ class EndnoteExporter:
             record["edition"] = ref.get("edition")
         urls = {}
         if ref.get("url"):
-            urls["web-urls"] = [url.strip() for url in str(ref.get("url")).strip().split()]
+            urls["web-urls"] = [
+                url.strip() for url in str(ref.get("url")).strip().split()
+            ]
         if ref.get("id") in file_mapping:
             pdf_urls = []
             pdf_folder_path = data_path / "PDF"
@@ -477,7 +625,9 @@ class EndnoteExporter:
         if access_raw:
             try:
                 # numeric epoch -> format human readable
-                if isinstance(access_raw, (int, float)) or (isinstance(access_raw, str) and access_raw.isdigit()):
+                if isinstance(access_raw, (int, float)) or (
+                    isinstance(access_raw, str) and access_raw.isdigit()
+                ):
                     a_dt, _ = format_timestamp(int(str(access_raw)))
                     if a_dt:
                         record["access-date"] = a_dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -485,9 +635,11 @@ class EndnoteExporter:
                         record["access-date"] = str(access_raw)
                 else:
                     record["access-date"] = str(access_raw)
-            except Exception:
+            except (ValueError, TypeError, AttributeError) as e:
                 record["access-date"] = str(access_raw)
-                logger.warning(f"Error processing access_date value '{access_raw}' for record ID {ref.get('id')}; using raw string.")
+                logger.warning(
+                    f"Error processing access_date value '{access_raw}' for record ID {ref.get('id')}: {e}; using raw string."
+                )
 
         original_notes = ref.get("notes", "")
         date_metadata = []
@@ -505,9 +657,6 @@ class EndnoteExporter:
         return record
 
     def _dict_to_xml(self, record_dict, parent):
-
-
-
         record = create_xml_element(parent, "record")
 
         create_xml_element(record, "rec-number", record_dict.get("rec-number"))
@@ -542,12 +691,18 @@ class EndnoteExporter:
         )
         # optional short-title
         if record_dict["titles"].get("short-title"):
-            create_xml_element(titles, "short-title", record_dict["titles"].get("short-title"))
+            create_xml_element(
+                titles, "short-title", record_dict["titles"].get("short-title")
+            )
         # optional tertiary-title and alt-title (some baseline records use these)
         if record_dict["titles"].get("tertiary-title"):
-            create_xml_element(titles, "tertiary-title", record_dict["titles"].get("tertiary-title"))
+            create_xml_element(
+                titles, "tertiary-title", record_dict["titles"].get("tertiary-title")
+            )
         if record_dict["titles"].get("alt-title"):
-            create_xml_element(titles, "alt-title", record_dict["titles"].get("alt-title"))
+            create_xml_element(
+                titles, "alt-title", record_dict["titles"].get("alt-title")
+            )
 
         if "contributors" in record_dict:
             contributors = create_xml_element(record, "contributors")
@@ -571,10 +726,10 @@ class EndnoteExporter:
                 return t
             # common observed canonicalizations from baseline XML
             replacements = {
-                'Science of The Total Environment': 'Science of the Total Environment',
-                'PLoS One': 'PLoS ONE',
-                'Remote Sensing of Environment': 'Remote sensing of environment',
-                'Sustainable cities and society': 'Sustainable Cities and Society',
+                "Science of The Total Environment": "Science of the Total Environment",
+                "PLoS One": "PLoS ONE",
+                "Remote Sensing of Environment": "Remote sensing of environment",
+                "Sustainable cities and society": "Sustainable Cities and Society",
             }
             return replacements.get(t, t)
 
@@ -584,7 +739,9 @@ class EndnoteExporter:
             full = record_dict["periodical"].get("full-title")
             create_xml_element(per, "full-title", _normalize_journal_title(full))
             if record_dict["periodical"].get("abbr-1"):
-                create_xml_element(per, "abbr-1", record_dict["periodical"].get("abbr-1"))
+                create_xml_element(
+                    per, "abbr-1", record_dict["periodical"].get("abbr-1")
+                )
 
         create_xml_element(record, "pages", record_dict.get("pages"))
         create_xml_element(record, "volume", record_dict.get("volume"))
@@ -606,15 +763,21 @@ class EndnoteExporter:
         # alt-periodical (nested abbr-1)
         if record_dict.get("alt-periodical"):
             ap = create_xml_element(record, "alt-periodical")
-            create_xml_element(ap, "full-title", record_dict["alt-periodical"].get("full-title"))
+            create_xml_element(
+                ap, "full-title", record_dict["alt-periodical"].get("full-title")
+            )
             if record_dict["alt-periodical"].get("abbr-1"):
-                create_xml_element(ap, "abbr-1", record_dict["alt-periodical"].get("abbr-1"))
+                create_xml_element(
+                    ap, "abbr-1", record_dict["alt-periodical"].get("abbr-1")
+                )
 
         # publisher, accession, auth-address, custom fields, edition
         if record_dict.get("publisher"):
             create_xml_element(record, "publisher", record_dict.get("publisher"))
         if record_dict.get("accession-num"):
-            create_xml_element(record, "accession-num", record_dict.get("accession-num"))
+            create_xml_element(
+                record, "accession-num", record_dict.get("accession-num")
+            )
         if record_dict.get("auth-address"):
             create_xml_element(record, "auth-address", record_dict.get("auth-address"))
         if record_dict.get("custom1"):
@@ -629,7 +792,11 @@ class EndnoteExporter:
 
         # electronic resource (DOI)
         if record_dict.get("electronic-resource-num"):
-            create_xml_element(record, "electronic-resource-num", record_dict.get("electronic-resource-num"))
+            create_xml_element(
+                record,
+                "electronic-resource-num",
+                record_dict.get("electronic-resource-num"),
+            )
 
         # language and access-date
         if record_dict.get("language"):
@@ -725,7 +892,7 @@ def format_timestamp(ts):
             # try float-like
             try:
                 ts = int(float(ts))
-            except Exception:
+            except ValueError:
                 pass
         dt = datetime.fromtimestamp(int(ts))
         return dt, dt.isoformat(sep="T", timespec="seconds")
@@ -747,9 +914,10 @@ def safe_str(input) -> str:
     try:
         s = str(input).strip()
         return INVALID_XML_REGEX.sub("", s) or ""
-    except (AttributeError, TypeError) as e:
+    except (AttributeError, TypeError):
         logger.warning(f"Error sanitizing string for XML: {input}")
         return ""
+
 
 # For backward compatibility, keep the function
 def export_references_to_xml(enl_file_path: Path, output_file: Path):
@@ -775,7 +943,7 @@ class XMLComparator:
             "urls",
             "remote-database-name",
             "remote-database-provider",
-            "foreign-keys"
+            "foreign-keys",
         }
 
     def compare(self):
@@ -819,6 +987,7 @@ class XMLComparator:
 
                 # Special-case ISBN: normalize newline characters and compare as sets of lines
                 if field == "isbn":
+
                     def _isbn_lines(x):
                         if x is None:
                             return []
@@ -826,9 +995,19 @@ class XMLComparator:
                         if isinstance(x, list):
                             parts = []
                             for item in x:
-                                parts.extend(str(item).replace("\r\n", "\n").replace("\r", "\n").split("\n"))
+                                parts.extend(
+                                    str(item)
+                                    .replace("\r\n", "\n")
+                                    .replace("\r", "\n")
+                                    .split("\n")
+                                )
                         else:
-                            parts = str(x).replace("\r\n", "\n").replace("\r", "\n").split("\n")
+                            parts = (
+                                str(x)
+                                .replace("\r\n", "\n")
+                                .replace("\r", "\n")
+                                .split("\n")
+                            )
                         return [p.strip() for p in parts if p and p.strip()]
 
                     va_lines = _isbn_lines(va)
@@ -842,12 +1021,13 @@ class XMLComparator:
 
                 # Special-case auth-address: compare as unordered set of normalized lines
                 if field == "auth-address":
+
                     def _addr_lines(x):
                         if x is None:
                             return []
                         s = str(x)
-                        s = s.replace('\r\n', '\n').replace('\r', '\n')
-                        parts = [p.strip() for p in s.split('\n') if p.strip()]
+                        s = s.replace("\r\n", "\n").replace("\r", "\n")
+                        parts = [p.strip() for p in s.split("\n") if p.strip()]
                         return parts
 
                     a_lines = sorted(_addr_lines(va))
@@ -860,6 +1040,7 @@ class XMLComparator:
 
                 # Special-case custom3: compare after normalizing whitespace to avoid line-ending/spacing differences
                 if field == "custom3":
+
                     def _norm(x):
                         if x is None:
                             return ""
@@ -911,7 +1092,9 @@ class XMLComparator:
         logger.debug(f"Endnote XML: {self.endnote_xml} ({len(keys_a)} records)")
         logger.debug(f"Custom XML: {self.custom_xml} ({len(keys_b)} records)")
         logger.debug(f"Matched records: {len(matched)}")
-        logger.debug(f"Only in Endnote XML: {len(only_a)}; Only in Custom XML: {len(only_b)}")
+        logger.debug(
+            f"Only in Endnote XML: {len(only_a)}; Only in Custom XML: {len(only_b)}"
+        )
 
         if only_a:
             logger.debug("\nRecords only in Endnote XML (sample up to 10):")
@@ -927,9 +1110,13 @@ class XMLComparator:
             if rec["missing_in_a"] or rec["missing_in_b"] or rec["diffs"]:
                 logger.debug(f"\nRecord: {rec['key']}")
                 if rec["missing_in_a"]:
-                    logger.debug(f"  Fields missing in Endnote XML: {rec['missing_in_a']}")
+                    logger.debug(
+                        f"  Fields missing in Endnote XML: {rec['missing_in_a']}"
+                    )
                 if rec["missing_in_b"]:
-                    logger.debug(f"  Fields missing in Custom XML: {rec['missing_in_b']}")
+                    logger.debug(
+                        f"  Fields missing in Custom XML: {rec['missing_in_b']}"
+                    )
                 if rec["diffs"]:
                     logger.debug("  Content differences:")
                     for f, vals in rec["diffs"].items():
@@ -1072,7 +1259,7 @@ class XMLComparator:
             sa = "" if a is None else str(a).strip()
             sb = "" if b is None else str(b).strip()
             return sa == sb
-        except Exception:
+        except (TypeError, AttributeError):
             return a == b
 
 
