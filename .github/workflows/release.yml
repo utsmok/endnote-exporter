@@ -50,7 +50,15 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           # Build universal binary that works on both Intel and Apple Silicon
-          pyinstaller --onefile --windowed --target-arch universal2 --name "endnote-exporter" gui.py
+          # Use --onedir for proper .app bundle (onedir is required for macOS .app)
+          pyinstaller --onedir --windowed --target-arch universal2 --name "endnote-exporter" gui.py
+
+      - name: Package macOS app
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          zip -r endnote-exporter-macos.zip endnote-exporter.app
+          echo "EXECUTABLE_NAME=endnote-exporter-macos.zip" >> $GITHUB_ENV
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
