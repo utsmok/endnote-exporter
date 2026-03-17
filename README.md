@@ -1,11 +1,29 @@
 # EndNote library exporter
 
-A user-friendly desktop application for Windows to quickly export an EndNote library into an XML file suitable for Zotero import with these improvements over the regular EndNote export:
+A user-friendly desktop application for **Windows, macOS, and Linux** to quickly export an EndNote library into an XML file suitable for Zotero import with these improvements over the regular EndNote export:
 
 - Simple GUI
 - Preserves added / modified dates for EndNote by letting Zotero store them as `Note` attachments to the item, which can be used by the companion plugin [EndNote Date Fixer](https://github.com/utsmok/endnote-date-fixer).
 - PDF attachments are linked using absolute to ensure they are properly imported into Zotero, instead of relying on relative paths.
 - Available as a script or packaged as a single executable file with no dependencies to install for ease of use.
+
+## Supported Platforms
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| Windows 10/11 | Fully Supported | Primary development platform |
+| macOS 12+ | Fully Supported | Supports both .enl and .enlp formats |
+| Linux | Fully Supported | Tested on Ubuntu/Debian |
+
+## Platform-Specific Notes
+
+### macOS
+- Supports both `.enl` and `.enlp` (package) library formats
+- The first run may require security exceptions in System Preferences
+
+### Linux
+- Requires Tkinter to be installed (usually `python3-tk` package)
+- Respects XDG_DOCUMENTS_DIR if set
 
 ## How to use
 
