@@ -24,3 +24,6 @@ node_modules/
 !testing/browser-local/fixture-manifest.json
 !testing/browser-local/golden/*.xml
 .pytest_cache/
+
+# Local tool directories
+memories/
