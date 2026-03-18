@@ -248,7 +248,7 @@ describe('createController', () => {
     const notice = takeSessionNotice(storage);
 
     expect(notice?.title).toBe('Previous review data was cleared');
-    expect(notice?.message).toContain('not restored after refresh');
+    expect(notice?.message).toContain('not restored after page reload');
     expect(storage.removeItem).toHaveBeenCalled();
   });
 });

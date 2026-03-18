@@ -47,10 +47,10 @@ describe('status presets', () => {
   it('describes the ready state using intake-stage semantics', () => {
     const status = buildReadyStatus(buildRuntime(true));
 
-    expect(status.title).toBe('Ready for intake');
+    expect(status.title).toBe('Ready to convert');
     expect(status.severity).toBe('informational');
     expect(status.workflowStage).toBe('intake');
-    expect(status.message).toContain('ZIP upload is the supported baseline');
+    expect(status.message).toContain('Upload a ZIP file to get started');
   });
 
   it('marks degraded completion as warning severity with recovery guidance', () => {

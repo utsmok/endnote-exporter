@@ -32,7 +32,7 @@ describe('view helpers', () => {
     });
     expect(summaries[1]).toMatchObject({
       count: 1,
-      title: 'Attachment payloads were missing',
+      title: 'Attachment files were missing',
     });
   });
 
