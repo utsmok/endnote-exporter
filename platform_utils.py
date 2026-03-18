@@ -1,7 +1,7 @@
 """Platform-specific utilities for cross-platform compatibility."""
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 
 def get_application_path() -> Path:
@@ -109,9 +109,11 @@ def _get_windows_documents_folder() -> Path | None:
         CSIDL_PERSONAL = 5  # My Documents
 
         buf = ctypes.create_unicode_buffer(wintypes.MAX_PATH)
-        ctypes.windll.shell32.SHGetFolderPathW(
-            0, CSIDL_PERSONAL, 0, SHGFP_TYPE_CURRENT, buf
-        )
+        windll = getattr(ctypes, "windll", None)
+        if windll is None:
+            return None
+
+        windll.shell32.SHGetFolderPathW(0, CSIDL_PERSONAL, 0, SHGFP_TYPE_CURRENT, buf)
         result = Path(buf.value)
         if result.exists():
             return result
