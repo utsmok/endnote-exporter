@@ -18,6 +18,7 @@ endnote-exporter/
 - **`endnote_exporter.py`**: `EndnoteExporter` class handles SQLite database reads, XML generation. `XMLComparator` for testing.
 - **`gui.py`**: `ExporterApp` class, Tkinter file dialogs. Entry point: `python gui.py`
 - **`platform_utils.py`**: Cross-platform path handling, Documents folder detection, .enlp support
+- **`testing/endnote-example-library.zip`**: Sample library for testing and fixture generation: this zip file contains a full EndNote library with the expected structure, including `grietha.enl`, `grietha.Data/sdb/sdb.eni`. Does not contain any real PDF attachments or dirs.
 
 ## Development
 
