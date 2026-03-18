@@ -164,7 +164,7 @@ This is the default browser-local behavior. The browser does not automatically r
 ### What to do
 
 - if you only need the bibliographic export, no action is required
-- if you want PDF paths emitted, enter a value in **Optional library location for PDF links** and reconvert
+- if you want PDF paths emitted, open the secondary options area, enter a value in **Optional library location for PDF links**, and reconvert
 - use the folder containing the `.enl` file and sibling `.Data`, or the full `.enlp` package path
 
 ## I supplied a library location, but only some PDF links were exported
@@ -200,8 +200,27 @@ The browser-local pipeline tolerates some record-level problems by exporting the
 ### What to do
 
 - review the warnings shown in the UI
-- use **View Exported Items** to review the items that were emitted
+- use the inline review workspace to inspect the items that were emitted
 - if the skipped rows are unacceptable, compare against the desktop app for the same library
+
+## I refreshed the page and the review workspace disappeared
+
+### Symptoms
+
+You see messaging such as:
+
+- `Previous review data was cleared`
+- `Export results are intentionally not restored after refresh`
+
+### Cause
+
+The current browser-local implementation keeps conversion and review data in memory for the active session. For privacy and contract clarity, that review state is not restored automatically after refresh or tab replacement.
+
+### What to do
+
+- rerun the same ZIP if you still need to inspect the result or download the XML again
+- complete review and download in the same served session when possible
+- use the desktop app instead if your workflow requires a more persistent desktop runtime
 
 ## The XML download does not start
 

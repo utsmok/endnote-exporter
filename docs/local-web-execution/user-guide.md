@@ -61,6 +61,13 @@ Use one of these supported launch shapes:
 
 Do **not** open the app by double-clicking `index.html` from disk.
 
+After the workspace becomes ready, the desktop-first UI presents:
+
+- one primary ZIP-first task surface
+- a visible workflow strip
+- a persistent trust/capability block
+- an initially empty inline review workspace that fills after conversion
+
 ### 2. Select your input
 
 You can use either of the following:
@@ -72,7 +79,7 @@ The direct-folder button is intentionally hidden when the browser context does n
 
 ### 3. Optional: supply a library location for PDF links
 
-The field labeled **Optional library location for PDF links** controls whether `<pdf-urls>` entries are emitted.
+The field labeled **Optional library location for PDF links** appears under the secondary options area and controls whether `<pdf-urls>` entries are emitted.
 
 If you leave it blank:
 
@@ -111,11 +118,19 @@ After a successful run, the UI reports:
 - attachment mode used
 - warnings, if any
 
+The result lands in an inline desktop review workspace rather than a modal dialog.
+
+That workspace includes:
+
+- summary metrics and warning groupings in a left-side review rail
+- download and reset actions adjacent to the review surface
+- an exported-items table with title, author, journal, year, PDF status, and DOI behaviour
+
 You can then:
 
 - **Download Zotero XML**
-- **View Exported Items** to inspect a modal list of title, author, year, and whether the record had at least one PDF attachment row
-- **Convert Another Library** to reset the screen for the next run
+- inspect the inline review workspace before import
+- **Convert another library** to reset the screen for the next run
 
 ## Download behavior
 
@@ -172,6 +187,13 @@ The important distinction is:
 - **server-side conversion requirement**: no, not for the baseline flow
 
 If you are using a hosted served build, the app assets themselves may still be delivered over the network like any other static website. That does not change the baseline conversion model into a hosted conversion service.
+
+Current session behavior is intentionally conservative:
+
+- theme preference may persist between visits
+- conversion and review data are treated as in-memory session state
+- if you refresh or replace the tab, the previous review workspace is intentionally not restored
+- if you still need the XML after a refresh, rerun the same ZIP and download again in the new session
 
 For the formal statement, see [`privacy.md`](./privacy.md).
 

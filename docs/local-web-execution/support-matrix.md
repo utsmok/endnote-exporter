@@ -54,9 +54,11 @@ This document applies only to the browser-local conversion surface. It does not 
 | Feature or behavior | Tier | Notes |
 |---|---|---|
 | Local XML generation and download in served mode | Supported | Core browser-local product behavior. |
+| Inline desktop review workspace during the active session | Supported | Review happens inline after conversion rather than through a blocking modal. |
 | Explicit warnings for degraded or unsupported cases | Supported | Warning surfacing is part of the product contract. |
 | Browser-local attachment handling without desktop absolute-path fidelity | Supported | Intentional browser-local policy. |
 | User-supplied library location for PDF path export | Supported | The browser does not discover native absolute paths. The user must supply the library location, and only verified relative attachment paths from the selected ZIP/folder are emitted. |
+| Automatic restoration of prior review data after refresh or tab replacement | Unsupported | The current browser-local surface keeps review data ephemeral and does not promise cross-refresh result continuity. |
 | Automatic desktop-style absolute PDF path discovery from browser pickers | Unsupported | Browsers do not generally reveal native absolute paths from file or folder pickers. |
 | Direct folder selection as a convenience enhancement | Experimental | Capability-gated, secure-context-only, and non-parity-critical. Current UI exposes it only when the required directory picker API is available. |
 

@@ -42,8 +42,10 @@ This browser-local surface is intentionally documented conservatively:
 - the supported baseline is a **served** workflow over `http://localhost` or `https://...`
 - direct `file://` launch is **unsupported**
 - ZIP upload is the supported baseline intake path
+- the browser UI uses a workflow strip, trust/capability messaging, and an inline desktop review workspace
 - direct folder intake is experimental and capability-gated
 - browser-local attachment-path behavior is intentionally narrower than the desktop app unless the user supplies a library location explicitly
+- review data is intentionally ephemeral and is not restored automatically after refresh
 
 Start with these documents:
 

@@ -54,6 +54,13 @@ The browser-local MVP should be documented and implemented with the following co
 - temporary in-browser state, cache behavior, or origin-scoped storage may exist as required by the runtime and implementation
 - any persistence beyond the active session must be documented explicitly if introduced later
 
+Current implementation notes:
+
+- theme preference may be stored locally so the workspace can reopen in the user's chosen appearance mode
+- conversion and review data are treated as in-memory session state rather than durable browser-local records
+- the application may store a minimal phase marker for interrupted-session messaging, but not the prior review payload itself
+- after refresh or tab replacement, the previous review workspace is intentionally not restored
+
 ## Fallback surface
 
 Users who require the established desktop runtime should continue to use the Python desktop application.

@@ -160,12 +160,40 @@ Specifically re-check these statements:
 - folder intake is experimental
 - attachment path export requires explicit user-supplied library location
 
+## Visual verification procedure
+
+Perform a manual or browser-automation-assisted visual verification pass against a local served instance before sign-off.
+
+### Required visual checkpoints
+
+At a representative desktop width:
+
+- the primary ZIP-first task surface is visually dominant
+- the **Workflow strip** section is visible and readable
+- the **Trust and capability** section is visible and retains conservative support language
+- the attachment-path field remains a secondary option rather than the primary call to action
+
+After converting a supported ZIP fixture:
+
+- the result appears in the inline **Review workspace** rather than a blocking modal
+- summary metrics, warning groupings, and download/reset controls are visible in the same desktop review surface
+- the exported-items table remains legible with DOI links and PDF-status indicators visible
+
+Resilience checks:
+
+- at `200%` zoom or equivalent larger text, primary actions remain reachable and the review table remains usable
+- under `prefers-reduced-motion`, non-essential motion is materially reduced
+- after refreshing from a completed review state, a privacy-aligned session-loss notice appears and prior review data is not silently restored
+
 ## Release checklist
 
 - [ ] user-facing docs match current runtime behavior
 - [ ] support tiers remain conservative and capability-based
 - [ ] privacy wording still reflects browser-local processing with no baseline server-side conversion step
 - [ ] attachment behavior is documented honestly
+- [ ] inline review workspace is verified visually in a served local session
+- [ ] workflow strip and trust/capability messaging are visible and accurate
+- [ ] session-loss notice behavior matches the documented privacy posture
 - [ ] Chromium smoke passes
 - [ ] best-effort matrix results are reviewed but not over-interpreted
 - [ ] build output is served, not documented for direct `file://` launch
