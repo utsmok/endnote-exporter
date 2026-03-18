@@ -16,3 +16,11 @@ build/
 *.jsonl
 *.spec
 *.log
+.lerim
+node_modules/
+!web/package.json
+!web/tsconfig.json
+!web/package-lock.json
+!testing/browser-local/fixture-manifest.json
+!testing/browser-local/golden/*.xml
+.pytest_cache/
