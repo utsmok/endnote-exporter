@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { EndnoteQueryResult } from '../types/query-results';
+import type { EndnoteReferenceRow } from '../types/query-results';
 import type { PreparedLibrary } from './library-types';
 import type { AttachmentExportOptions, ExportResult } from '../types/export-result';
 import {
@@ -15,6 +16,53 @@ import {
   getReferenceAttachments,
   hasMissingAttachmentPayloads,
 } from './build-export-result';
+
+function buildReferenceRow(
+  overrides: Partial<EndnoteReferenceRow> = {},
+): EndnoteReferenceRow {
+  return {
+    abstract: null,
+    access_date: null,
+    accession_number: null,
+    added_to_library: null,
+    alt_title: null,
+    alternate_title: null,
+    author: null,
+    author_address: null,
+    custom_1: null,
+    custom_2: null,
+    custom_3: null,
+    custom_7: null,
+    database_provider: null,
+    date: null,
+    edition: null,
+    electronic_resource_number: null,
+    id: 1,
+    isbn: null,
+    keywords: null,
+    label: null,
+    language: null,
+    name_of_database: null,
+    notes: null,
+    number: null,
+    pages: null,
+    place_published: null,
+    publisher: null,
+    record_last_updated: null,
+    reference_type: 0,
+    secondary_author: null,
+    secondary_title: null,
+    section: null,
+    short_title: null,
+    title: 'Synthetic Title',
+    trash_state: 0,
+    type_of_work: null,
+    url: null,
+    volume: null,
+    year: null,
+    ...overrides,
+  };
+}
 
 describe('Export context and result building', () => {
   let queryResult: EndnoteQueryResult;
@@ -33,7 +81,24 @@ describe('Export context and result building', () => {
       databaseArchivePath: '/library.Data/sdb/sdb.eni',
       databaseRelativePath: 'library.Data/sdb/sdb.eni',
       libraryId: 'test-library',
-      referenceRows: [],
+      referenceRows: [
+        buildReferenceRow({
+          author: 'Ada Lovelace\nCharles Babbage',
+          electronic_resource_number: '10.1000/example-doi',
+          id: 1,
+          secondary_title: 'Journal of Browser-local Fixtures',
+          title: 'Record One',
+          year: '2026',
+        }),
+        buildReferenceRow({
+          author: null,
+          electronic_resource_number: 'https://doi.org/10.1000/example-two',
+          id: 2,
+          secondary_title: null,
+          title: '',
+          year: null,
+        }),
+      ],
       summary: {
         attachmentRowCount: 2,
         referenceRowCount: 2,
@@ -130,7 +195,28 @@ describe('Export context and result building', () => {
 
       expect(metadata.attachmentMode).toBe('metadata-only-no-links');
       expect(metadata.inputRecordCount).toBe(2);
-      expect(metadata.items).toEqual([]);
+      expect(metadata.items).toEqual([
+        {
+          author: 'Ada Lovelace',
+          doi: '10.1000/example-doi',
+          doiUrl: 'https://doi.org/10.1000/example-doi',
+          hasPdfAttachment: true,
+          journal: 'Journal of Browser-local Fixtures',
+          recordId: 1,
+          title: 'Record One',
+          year: '2026',
+        },
+        {
+          author: '—',
+          doi: '10.1000/example-two',
+          doiUrl: 'https://doi.org/10.1000/example-two',
+          hasPdfAttachment: true,
+          journal: '—',
+          recordId: 2,
+          title: 'Untitled record',
+          year: '—',
+        },
+      ]);
       expect(metadata.linkedAttachmentCount).toBe(0);
       expect(metadata.recordCount).toBe(2);
       expect(metadata.skippedRecordCount).toBe(0);

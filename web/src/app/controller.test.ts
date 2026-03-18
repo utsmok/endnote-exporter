@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createController } from './controller';
 import {
@@ -35,7 +35,10 @@ function buildExportResult(): ExportResult {
       items: [
         {
           author: 'Ada Lovelace',
+          doi: '10.1000/test-doi',
+          doiUrl: 'https://doi.org/10.1000/test-doi',
           hasPdfAttachment: false,
+          journal: 'Journal of Test Automation',
           recordId: 1,
           title: 'Record 1',
           year: '2026',
@@ -52,6 +55,10 @@ function buildExportResult(): ExportResult {
     },
   };
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('createController', () => {
   it('uses the latest state when handling downloads after conversion', () => {
@@ -145,5 +152,64 @@ describe('createController', () => {
 
     expect(withDownloadError(state, 'No export result is available yet. Convert a library before downloading.').downloadErrorMessage)
       .toBe(state.downloadErrorMessage);
+  });
+
+  it('persists explicit theme preferences and updates the document theme', () => {
+    let state = createInitialState(buildRuntime());
+    const setItem = vi.fn();
+    const removeItem = vi.fn();
+    const documentElement = {
+      dataset: {} as Record<string, string>,
+      style: {} as Record<string, string>,
+    };
+
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      removeItem,
+      setItem,
+    });
+    vi.stubGlobal('document', {
+      documentElement,
+    });
+    vi.stubGlobal('window', {
+      matchMedia: vi.fn(() => ({ matches: false })),
+    });
+
+    const controller = createController({
+      download: vi.fn(),
+      getState: () => state,
+      pickDirectory: vi.fn(),
+      prepareInput: vi.fn(),
+      root: { querySelector: () => null } as unknown as HTMLElement,
+      updateState: (nextStateOrUpdater) => {
+        state = typeof nextStateOrUpdater === 'function'
+          ? nextStateOrUpdater(state)
+          : nextStateOrUpdater;
+        return state;
+      },
+      workerClient: {
+        convertPreparedLibrary: vi.fn(),
+        dispose: vi.fn(),
+        initialise: vi.fn(),
+        queryPreparedLibrary: vi.fn(),
+      },
+    });
+
+    controller.handleThemePreferenceChange('dark');
+
+    expect(state.themePreference).toBe('dark');
+    expect(state.resolvedTheme).toBe('dark');
+    expect(setItem).toHaveBeenCalledWith('endnote-exporter.theme-preference', 'dark');
+    expect(documentElement.dataset.theme).toBe('dark');
+    expect(documentElement.dataset.themePreference).toBe('dark');
+    expect(documentElement.style.colorScheme).toBe('dark');
+
+    controller.handleThemePreferenceChange('system');
+
+    expect(state.themePreference).toBe('system');
+    expect(state.resolvedTheme).toBe('light');
+    expect(removeItem).toHaveBeenCalledWith('endnote-exporter.theme-preference');
+    expect(documentElement.dataset.theme).toBe('light');
+    expect(documentElement.dataset.themePreference).toBe('system');
   });
 });

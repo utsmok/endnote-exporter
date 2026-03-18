@@ -8,6 +8,7 @@ import {
   clearDownloadError,
   clearExportResult,
   createInitialState,
+  withTheme,
   withAttachmentBasePath,
   withDownloadError,
   withExportResult,
@@ -17,12 +18,16 @@ import {
   withSelectedInput,
   withStatusMessage,
   type AppState,
+  type ResolvedTheme,
+  type ThemePreference,
 } from './state';
 import { downloadExportResult } from './download';
 
+const THEME_STORAGE_KEY = 'endnote-exporter.theme-preference';
+
 export async function mountApp(root: HTMLElement): Promise<void> {
   const runtime = detectBrowserRuntime();
-  let state = createInitialState(runtime);
+  let state = initialiseThemeState(createInitialState(runtime));
 
   const workerClient = createExportWorkerClient();
   globalThis.addEventListener(
@@ -61,6 +66,19 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   });
 
   render(root, state, controller);
+
+  const themeMediaQuery = getThemeMediaQuery();
+  themeMediaQuery?.addEventListener('change', () => {
+    updateState((currentState) => {
+      if (currentState.themePreference !== 'system') {
+        return currentState;
+      }
+
+      const resolvedTheme = resolveThemePreference('system');
+      applyDocumentTheme('system', resolvedTheme);
+      return withTheme(currentState, 'system', resolvedTheme);
+    });
+  });
 
   if (!runtime.isServedMode) {
     updateState({
@@ -115,15 +133,29 @@ function renderApp(state: AppState): string {
   return `
     <main class="shell">
       <section class="hero card">
-        <p class="eyebrow">EndNote Exporter · Browser-local Conversion</p>
-        <h1>Convert EndNote Libraries to Zotero</h1>
-        <p class="lede">
-          Select an EndNote library ZIP file to convert it locally in your browser.
-          Your data never leaves your device.
-        </p>
-        <div class="status-row">
-          <span class="status-chip status-chip--${escapeHtml(state.workerStatus)}">${escapeHtml(state.workerStatus)}</span>
-          <span>${escapeHtml(state.statusMessage)}</span>
+        <div class="hero__glow" aria-hidden="true"></div>
+        <div class="hero__header">
+          <div class="hero__copy">
+            <p class="eyebrow">EndNote Exporter · Browser-local workspace</p>
+            <h1>Convert EndNote Libraries to Zotero</h1>
+            <p class="lede">
+              Convert locally in a calmer browser workspace with richer metadata review,
+              system-aware theming, and XML generation that stays on your device.
+            </p>
+          </div>
+          ${renderThemeToggle(state)}
+        </div>
+        <div class="status-panel">
+          <div class="status-row">
+            <span class="status-chip status-chip--${escapeHtml(state.workerStatus)}">${escapeHtml(state.workerStatus)}</span>
+            <span class="status-text">${escapeHtml(state.statusMessage)}</span>
+            ${renderTooltip(
+              'worker-status-help',
+              'How browser-local mode works',
+              buildWorkerTooltip(state),
+            )}
+          </div>
+          ${renderStatusDetails(state)}
         </div>
       </section>
 
@@ -151,10 +183,26 @@ function renderFileSelection(state: AppState): string {
   const directFolderSection = state.runtime.directoryIntake.available
     ? `
       <div class="enhancement-card">
-        <p class="enhancement-eyebrow">Experimental direct-folder intake</p>
-        <p class="instruction enhancement-copy">
-          Exposed only when the browser provides a secure-context directory picker. ZIP upload remains the supported baseline path.
-        </p>
+        <div class="section-heading section-heading--tight">
+          <div class="section-heading__title">
+            <p class="enhancement-eyebrow">Experimental direct-folder intake</p>
+            ${renderTooltip(
+              'directory-intake-help',
+              'When direct-folder intake appears',
+              'Folder selection is offered only in served, secure browser contexts that expose the required directory picker APIs.',
+            )}
+          </div>
+          <span class="soft-chip">Progressive enhancement</span>
+        </div>
+        <details class="disclosure disclosure--compact disclosure--embedded">
+          <summary>When should I use the folder picker?</summary>
+          <div class="disclosure__content">
+            <p>
+              Use it only when you already have a local library folder available and your browser exposes the picker.
+              ZIP upload remains the supported baseline flow and should be preferred for consistent cross-browser behavior.
+            </p>
+          </div>
+        </details>
         <button id="directory-picker-button" class="button button--secondary" type="button">
           Choose Library Folder
         </button>
@@ -162,19 +210,38 @@ function renderFileSelection(state: AppState): string {
     `
     : `
       <div class="enhancement-card enhancement-card--muted">
-        <p class="enhancement-eyebrow">Direct-folder intake unavailable here</p>
-        <p class="instruction enhancement-copy">
-          ZIP upload remains fully usable. Folder selection is shown only when the browser exposes the required picker capability in a served, secure context.
-        </p>
+        <div class="section-heading section-heading--tight">
+          <p class="enhancement-eyebrow">Direct-folder intake unavailable here</p>
+          ${renderTooltip(
+            'directory-intake-unavailable-help',
+            'Why the folder picker is unavailable',
+            'ZIP upload remains fully supported. The folder picker stays hidden unless the browser exposes the required secure-context capability.',
+          )}
+        </div>
       </div>
     `;
 
   return `
     <section class="card">
-      <h2>Select EndNote Library</h2>
-      <p class="instruction">
-        Choose a ZIP file containing your EndNote library (.enl + .Data folder or .enlp package). This ZIP-first flow is the supported baseline.
-      </p>
+      <div class="section-heading">
+        <div>
+          <div class="section-heading__title">
+            <h2>Select EndNote Library</h2>
+            ${renderTooltip(
+              'zip-upload-help',
+              'How to start a conversion',
+              'Upload a ZIP that contains either an .enl library plus matching .Data folder or an .enlp package export.',
+            )}
+          </div>
+          <p class="instruction section-subcopy">
+            ZIP upload stays the supported baseline, while the optional folder picker appears only when the browser can safely support it.
+          </p>
+        </div>
+        <div class="chip-row">
+          <span class="soft-chip">Local-only processing</span>
+          <span class="soft-chip">ZIP-first</span>
+        </div>
+      </div>
       <div class="file-input-wrapper">
         <input
           type="file"
@@ -183,13 +250,29 @@ function renderFileSelection(state: AppState): string {
           class="file-input"
         />
         <label for="zip-file-input" id="zip-dropzone" class="file-input-label" tabindex="0">
-          <span class="file-input-button">Choose ZIP File</span>
-          <span class="file-input-text">Drop a ZIP here or choose a file</span>
+          <span class="file-input-button">Choose ZIP file</span>
+          <span class="file-input-text">
+            Drop a validated library ZIP here or browse for one from your device.
+          </span>
         </label>
       </div>
-      <p class="drop-hint">Drag and drop a ZIP onto the picker above for the same supported ZIP-first workflow.</p>
+      <div class="inline-meta-row" role="note">
+        <span class="inline-meta-pill">Drag-and-drop supported</span>
+        ${renderTooltip(
+          'drag-and-drop-help',
+          'Drag and drop support',
+          'Dropping a ZIP onto the upload surface uses the same validated ZIP-first conversion flow as the file picker.',
+        )}
+      </div>
       <div class="field-group">
-        <label class="field-label" for="attachment-base-path">Optional library location for PDF links</label>
+        <div class="field-label-row">
+          <label class="field-label" for="attachment-base-path">Optional library location for PDF links</label>
+          ${renderTooltip(
+            'attachment-base-path-tip',
+            'Why add a library path?',
+            'Use this only if you want exported XML items to include PDF file links that point back to your local EndNote library.',
+          )}
+        </div>
         <input
           id="attachment-base-path"
           class="text-input"
@@ -199,17 +282,28 @@ function renderFileSelection(state: AppState): string {
           autocomplete="off"
           placeholder="/Users/me/Documents or C:\\Users\\me\\Documents\\MyLibrary.enlp"
         />
-        <p class="field-help">
-          Browsers cannot reveal native absolute paths from file or folder pickers. If you want PDF file paths in the XML, supply the containing library folder yourself (for <code>.enl</code> + <code>.Data</code>) or the full <code>.enlp</code> package path. We will combine that with verified relative attachment paths from the selected ZIP or folder.
-        </p>
+        <details class="disclosure">
+          <summary>How PDF library paths work</summary>
+          <div class="disclosure__content">
+            <p>
+              Browsers do not expose native absolute paths from file or folder pickers. If you want PDF links in the exported XML,
+              provide the containing library folder yourself for <code>.enl</code> + <code>.Data</code> libraries, or the full <code>.enlp</code> package path.
+            </p>
+            <p>
+              The exporter combines that base location with verified relative attachment paths discovered inside the selected ZIP or folder.
+            </p>
+          </div>
+        </details>
       </div>
-      <div class="help-text">
-        <p><strong>Supported formats:</strong></p>
-        <ul>
-          <li>.zip files containing .enl + .Data folder</li>
-          <li>.zip files containing .enlp package contents</li>
-        </ul>
-      </div>
+      <details class="disclosure disclosure--compact">
+        <summary>Supported archive shapes</summary>
+        <div class="disclosure__content">
+          <ul>
+            <li><code>.zip</code> files containing <code>.enl</code> + <code>.Data</code></li>
+            <li><code>.zip</code> files containing <code>.enlp</code> package contents</li>
+          </ul>
+        </div>
+      </details>
       ${directFolderSection}
     </section>
   `;
@@ -309,37 +403,67 @@ function renderItemModal(state: AppState): string {
   const { items, libraryDisplayName } = state.exportResult.metadata;
 
   return `
-    <dialog id="items-modal" class="modal" aria-labelledby="items-modal-title">
+    <dialog id="items-modal" class="modal" aria-labelledby="items-modal-title" aria-modal="true">
       <div class="modal__content">
         <div class="modal__header">
           <div>
             <p class="eyebrow modal__eyebrow">Exported items</p>
             <h3 id="items-modal-title">${escapeHtml(libraryDisplayName)}</h3>
+            <p class="instruction modal__copy">
+              Review title, author, publication context, DOI metadata, and verified PDF status before importing the XML.
+            </p>
           </div>
           <button id="close-items-modal-button" class="button button--secondary" type="button">
             Close
           </button>
         </div>
-        <p class="instruction modal__copy">
-          Review the exported records and whether each one includes at least one verified PDF attachment row.
-        </p>
+        <div class="modal__intro">
+          <div class="modal__meta-row">
+            <span class="soft-chip">${items.length} exported item${items.length === 1 ? '' : 's'}</span>
+            ${renderTooltip(
+              'doi-link-help',
+              'How DOI links behave',
+              'When the exporter can derive a canonical DOI URL, the DOI opens in a new tab. Otherwise the raw DOI value is shown as text.',
+            )}
+          </div>
+        </div>
         <div class="modal__table-wrap">
           <table class="items-table">
             <thead>
               <tr>
                 <th scope="col">Title</th>
                 <th scope="col">Author</th>
+                <th scope="col">Journal</th>
                 <th scope="col">Year</th>
                 <th scope="col">PDF</th>
+                <th scope="col">DOI</th>
               </tr>
             </thead>
             <tbody>
               ${items.map((item) => `
                 <tr>
-                  <td>${escapeHtml(item.title)}</td>
-                  <td>${escapeHtml(item.author)}</td>
+                  <td>
+                    <div class="item-meta">
+                      <span class="item-meta__primary">${escapeHtml(item.title)}</span>
+                      <span class="item-meta__secondary">Record #${escapeHtml(String(item.recordId))}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="item-meta">
+                      <span class="item-meta__primary">${escapeHtml(item.author)}</span>
+                    </div>
+                  </td>
+                  <td>${escapeHtml(item.journal)}</td>
                   <td class="tabular-cell">${escapeHtml(item.year)}</td>
-                  <td>${item.hasPdfAttachment ? 'Yes' : 'No'}</td>
+                  <td>
+                    ${renderAttachmentIndicator(item.hasPdfAttachment)}
+                  </td>
+                  <td>
+                    ${item.doiUrl
+                      ? `<a class="doi-link" href="${escapeHtml(item.doiUrl)}" target="_blank" rel="noreferrer noopener">${escapeHtml(item.doi)}</a>`
+                      : escapeHtml(item.doi)
+                    }
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
@@ -372,11 +496,32 @@ function renderConversionError(state: AppState): string {
 
 function renderWarnings(warnings: Array<{ code: string; message: string }>): string {
   return `
-    <div class="warnings">
-      <h3>Warnings</h3>
+    <div class="warnings" role="region" aria-labelledby="warnings-title">
+      <div class="section-heading section-heading--tight">
+        <div class="section-heading__title">
+          <h3 id="warnings-title">Warnings</h3>
+          ${renderTooltip(
+            'warnings-help',
+            'What warnings mean',
+            'Warnings flag records or attachments that need a quick review before import. They do not block XML download.',
+          )}
+        </div>
+      </div>
       <ul class="warning-list">
         ${warnings.map((warning) => `<li><code>${escapeHtml(warning.code)}</code>: ${escapeHtml(warning.message)}</li>`).join('')}
       </ul>
+      <details class="disclosure disclosure--warning">
+        <summary>Why am I seeing warnings?</summary>
+        <div class="disclosure__content">
+          <p>
+            Warning codes usually mean that an attachment payload was missing, a timestamp was malformed,
+            or a record could not be converted without being skipped.
+          </p>
+          <p>
+            Review the list above before importing so you know whether any follow-up cleanup is needed in Zotero or in the original EndNote library.
+          </p>
+        </div>
+      </details>
     </div>
   `;
 }
@@ -391,6 +536,7 @@ interface Controller {
   handleConvertAnother: () => void;
   handleOpenItemsModal: () => void;
   handleRetry: () => void;
+  handleThemePreferenceChange: (themePreference: ThemePreference) => void;
 }
 
 interface ControllerDependencies {
@@ -541,6 +687,13 @@ export function createController({
     handleRetry() {
       updateState((currentState) => clearExportResult(currentState));
     },
+
+    handleThemePreferenceChange(themePreference) {
+      const resolvedTheme = resolveThemePreference(themePreference);
+      persistThemePreference(themePreference);
+      applyDocumentTheme(themePreference, resolvedTheme);
+      updateState((currentState) => withTheme(currentState, themePreference, resolvedTheme));
+    },
   };
 }
 
@@ -567,6 +720,16 @@ function attachController(root: HTMLElement, controller: Controller): void {
   const attachmentBasePathInput = root.querySelector<HTMLInputElement>('#attachment-base-path');
   attachmentBasePathInput?.addEventListener('input', (event) => {
     controller.handleAttachmentBasePathInput((event.target as HTMLInputElement).value);
+  });
+
+  const themeButtons = root.querySelectorAll<HTMLButtonElement>('[data-theme-preference]');
+  themeButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const themePreference = button.dataset.themePreference;
+      if (themePreference === 'system' || themePreference === 'light' || themePreference === 'dark') {
+        controller.handleThemePreferenceChange(themePreference);
+      }
+    });
   });
 
   const dropZone = root.querySelector<HTMLElement>('#zip-dropzone');
@@ -669,4 +832,179 @@ function buildReadyStatusMessage(runtime: AppState['runtime']): string {
 
 function isPickerAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
+}
+
+function renderThemeToggle(state: AppState): string {
+  const themeOptions: Array<{ value: ThemePreference; label: string }> = [
+    { value: 'system', label: 'System' },
+    { value: 'light', label: 'Light' },
+    { value: 'dark', label: 'Dark' },
+  ];
+
+  const preferenceCaption = state.themePreference === 'system'
+    ? `Following system (${state.resolvedTheme})`
+    : `Locked to ${state.resolvedTheme}`;
+
+  return `
+    <div class="theme-toggle" role="group" aria-label="Theme preference">
+      <span class="theme-toggle__label">Appearance</span>
+      <div class="theme-toggle__controls">
+        ${themeOptions.map((option) => `
+          <button
+            class="theme-toggle__button ${state.themePreference === option.value ? 'theme-toggle__button--active' : ''}"
+            type="button"
+            data-theme-preference="${option.value}"
+            aria-pressed="${state.themePreference === option.value ? 'true' : 'false'}"
+          >
+            ${option.label}
+          </button>
+        `).join('')}
+      </div>
+      <span class="theme-toggle__caption">${escapeHtml(preferenceCaption)}</span>
+    </div>
+  `;
+}
+
+function renderTooltip(id: string, label: string, text: string): string {
+  return `
+    <span class="tooltip">
+      <button class="tooltip__trigger" type="button" aria-label="${escapeHtml(label)}" aria-describedby="${escapeHtml(id)}">
+        <span aria-hidden="true">i</span>
+      </button>
+      <span class="tooltip__bubble" role="tooltip" id="${escapeHtml(id)}">${escapeHtml(text)}</span>
+    </span>
+  `;
+}
+
+function renderAttachmentIndicator(hasPdfAttachment: boolean): string {
+  const label = hasPdfAttachment
+    ? 'Verified PDF attachment present'
+    : 'No verified PDF attachment found';
+
+  return `
+    <span
+      class="attachment-indicator ${hasPdfAttachment ? 'attachment-indicator--present' : 'attachment-indicator--absent'}"
+      role="img"
+      aria-label="${label}"
+      title="${label}"
+    >
+      <span class="attachment-indicator__icon" aria-hidden="true">${hasPdfAttachment ? '✓' : '—'}</span>
+    </span>
+  `;
+}
+
+function renderStatusDetails(state: AppState): string {
+  if (state.workerStatus === 'error') {
+    return `
+      <details class="disclosure disclosure--hero">
+        <summary>Troubleshooting browser support</summary>
+        <div class="disclosure__content">
+          <p>
+            This workspace requires a served page and dedicated worker support. Open the app through the Vite dev or preview server instead of <code>file://</code>.
+          </p>
+          <p>
+            If workers are blocked, check the browser version, privacy extensions, or enterprise policies that may disable worker execution.
+          </p>
+        </div>
+      </details>
+    `;
+  }
+
+  return `
+    <details class="disclosure disclosure--hero">
+      <summary>What browser-local mode includes</summary>
+      <div class="disclosure__content">
+        <p>
+          ZIP upload is the stable baseline path. Directory intake is optional and appears only when the browser exposes secure-context picker APIs.
+        </p>
+        <p>
+          The worker keeps heavy processing off the main thread while the UI remains responsive during conversion.
+        </p>
+      </div>
+    </details>
+  `;
+}
+
+function buildWorkerTooltip(state: AppState): string {
+  if (state.workerStatus === 'error') {
+    return 'Served mode and dedicated worker support are required for the browser-local conversion pipeline.';
+  }
+
+  return state.runtime.directoryIntake.available
+    ? 'ZIP upload is the supported baseline; the folder picker is a progressive enhancement when the browser supports it.'
+    : 'The worker is ready. ZIP upload is available everywhere this served browser-local workspace is supported.';
+}
+
+function initialiseThemeState(state: AppState): AppState {
+  const themePreference = readStoredThemePreference();
+  const resolvedTheme = resolveThemePreference(themePreference);
+  applyDocumentTheme(themePreference, resolvedTheme);
+  return withTheme(state, themePreference, resolvedTheme);
+}
+
+function readStoredThemePreference(): ThemePreference {
+  if (typeof document !== 'undefined') {
+    const documentPreference = document.documentElement.dataset.themePreference;
+    if (
+      documentPreference === 'system'
+      || documentPreference === 'light'
+      || documentPreference === 'dark'
+    ) {
+      return documentPreference;
+    }
+  }
+
+  if (typeof localStorage === 'undefined') {
+    return 'system';
+  }
+
+  try {
+    const storedValue = localStorage.getItem(THEME_STORAGE_KEY);
+    return storedValue === 'light' || storedValue === 'dark' ? storedValue : 'system';
+  } catch {
+    return 'system';
+  }
+}
+
+function persistThemePreference(themePreference: ThemePreference): void {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+
+  try {
+    if (themePreference === 'system') {
+      localStorage.removeItem(THEME_STORAGE_KEY);
+      return;
+    }
+
+    localStorage.setItem(THEME_STORAGE_KEY, themePreference);
+  } catch {
+    // Ignore storage write failures and continue with the in-memory theme selection.
+  }
+}
+
+function resolveThemePreference(themePreference: ThemePreference): ResolvedTheme {
+  if (themePreference === 'light' || themePreference === 'dark') {
+    return themePreference;
+  }
+
+  return getThemeMediaQuery()?.matches ? 'dark' : 'light';
+}
+
+function applyDocumentTheme(themePreference: ThemePreference, resolvedTheme: ResolvedTheme): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  document.documentElement.dataset.theme = resolvedTheme;
+  document.documentElement.dataset.themePreference = themePreference;
+  document.documentElement.style.colorScheme = resolvedTheme;
+}
+
+function getThemeMediaQuery(): MediaQueryList | undefined {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return undefined;
+  }
+
+  return window.matchMedia('(prefers-color-scheme: dark)');
 }

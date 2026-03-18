@@ -7,6 +7,17 @@ import {
   type DirectoryFileHandleLike,
   type DirectoryHandleLike,
 } from './directory-input';
+import {
+  canonicalizeXml,
+  convertPreparedLibrary,
+  countXmlRecords,
+  createDirectoryHandleFromFileSystem,
+  endnoteExampleLibraryDirectory,
+  expectValidXml,
+  readGoldenFile,
+  realSampleExpectations,
+  stripPdfUrls,
+} from '../test/repo-fixtures';
 
 describe('detectDirectoryIntakeCapability', () => {
   it('enables direct-folder intake only in secure served contexts with a picker', () => {
@@ -84,6 +95,42 @@ describe('prepareLibraryFromDirectoryHandle', () => {
     );
     expect(library.database.relativePath).toBe('PackageLibrary.Data/sdb/sdb.eni');
     expect(library.files.every((file) => file.source === 'directory-entry')).toBe(true);
+  });
+
+  it('uses the checked-in real sample directory and makes the missing PDF payload expectation explicit', async () => {
+    const handle = createDirectoryHandleFromFileSystem(endnoteExampleLibraryDirectory);
+    const library = await prepareLibraryFromDirectoryHandle(handle);
+    const goldenXml = await readGoldenFile('endnote-example-library.xml');
+    const result = await convertPreparedLibrary(library, {
+      baseLibraryPath: '/virtual/grietha.enl',
+    });
+
+    expect(library.sourceKind).toBe('directory');
+    expect(library.identity.libraryRelativePath).toBe('grietha.enl');
+    expect(library.database.relativePath).toBe('grietha.Data/sdb/sdb.eni');
+    expect(library.attachments.files).toEqual([]);
+    expect(library.files.every((file) => file.source === 'directory-entry')).toBe(true);
+
+    expectValidXml(result.xml);
+    expect(result.xml).not.toContain('<pdf-urls>');
+    expect(canonicalizeXml(result.xml)).toEqual(canonicalizeXml(goldenXml));
+    expect(countXmlRecords(result.xml)).toBe(realSampleExpectations.exportedRecordCount);
+    expect(result.metadata.inputRecordCount).toBe(realSampleExpectations.inputRecordCount);
+    expect(result.metadata.recordCount).toBe(realSampleExpectations.exportedRecordCount);
+    expect(result.metadata.attachmentCount).toBe(realSampleExpectations.attachmentCount);
+    expect(result.metadata.referenceCountWithAttachments).toBe(
+      realSampleExpectations.referenceCountWithAttachments,
+    );
+    expect(result.metadata.missingAttachmentPayloadCount).toBe(
+      realSampleExpectations.missingAttachmentPayloadCount,
+    );
+    expect(result.metadata.linkedAttachmentCount).toBe(0);
+    expect(result.metadata.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'ATTACHMENT_LINKS_OMITTED' }),
+        expect.objectContaining({ code: 'ATTACHMENT_PAYLOAD_MISSING' }),
+      ]),
+    );
   });
 });
 
