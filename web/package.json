@@ -1,0 +1,36 @@
+{
+  "name": "endnote-exporter-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Canonical served-mode browser-local workspace for EndNote Exporter.",
+  "type": "module",
+  "packageManager": "npm@11.7.0",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "spike:sqlite-wasm": "node ./scripts/run-sqlite-wasm-feasibility.mjs",
+    "test": "vitest run --config vitest.config.ts",
+    "test:e2e": "playwright test --config ../playwright.config.ts",
+    "test:e2e:chromium": "playwright test --config ../playwright.config.ts --project=chromium ./tests/e2e/smoke.spec.ts",
+    "test:matrix": "playwright test --config ../playwright.config.ts ./tests/e2e/browser-matrix.spec.ts",
+    "test:normalize": "vitest run --environment node src/core/normalize-library.test.ts",
+    "test:worker-query": "vitest run --environment node src/worker/query-endnote.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.2",
+    "@types/node": "24.3.0",
+    "fast-xml-parser": "^5.5.6",
+    "typescript": "5.9.3",
+    "vite": "8.0.0",
+    "vitest": "3.2.4"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "sql.js": "^1.14.1"
+  }
+}
