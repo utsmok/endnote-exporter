@@ -6,6 +6,34 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0"
     />
+    <script>
+      (() => {
+        const storageKey = 'endnote-exporter.theme-preference';
+        const root = document.documentElement;
+        const resolveSystemTheme = () => (
+          window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        );
+
+        try {
+          const storedPreference = window.localStorage.getItem(storageKey);
+          const themePreference = storedPreference === 'light' || storedPreference === 'dark'
+            ? storedPreference
+            : 'system';
+          const resolvedTheme = themePreference === 'system'
+            ? resolveSystemTheme()
+            : themePreference;
+
+          root.dataset.theme = resolvedTheme;
+          root.dataset.themePreference = themePreference;
+          root.style.colorScheme = resolvedTheme;
+        } catch {
+          const resolvedTheme = resolveSystemTheme();
+          root.dataset.theme = resolvedTheme;
+          root.dataset.themePreference = 'system';
+          root.style.colorScheme = resolvedTheme;
+        }
+      })();
+    </script>
     <title>EndNote Exporter — Browser Workspace</title>
   </head>
   <body>

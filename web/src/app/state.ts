@@ -12,15 +12,21 @@ export type AppPhase =
   | 'conversion-complete'
   | 'conversion-error';
 
+export type ThemePreference = 'system' | 'light' | 'dark';
+
+export type ResolvedTheme = 'light' | 'dark';
+
 export interface AppState {
   attachmentBasePath: string;
   downloadErrorMessage: string | undefined;
   isItemModalOpen: boolean;
   notes: string[];
   phase: AppPhase;
+  resolvedTheme: ResolvedTheme;
   runtime: BrowserRuntimeInfo;
   selectedInputLabel?: string;
   statusMessage: string;
+  themePreference: ThemePreference;
   workerStatus: WorkerStatus;
   exportResult?: ExportResult;
 }
@@ -32,10 +38,12 @@ export function createInitialState(runtime: BrowserRuntimeInfo): AppState {
     isItemModalOpen: false,
     notes: [...runtime.notes],
     phase: 'booting',
+    resolvedTheme: 'dark',
     runtime,
     statusMessage: runtime.isServedMode
       ? 'Bootstrapping the worker-backed served-mode workspace.'
       : 'Served mode is required; file:// launch is intentionally unsupported.',
+    themePreference: 'system',
     workerStatus: 'starting',
   };
 }
@@ -46,6 +54,18 @@ export function withPhase(state: AppState, phase: AppPhase): AppState {
 
 export function withAttachmentBasePath(state: AppState, attachmentBasePath: string): AppState {
   return { ...state, attachmentBasePath };
+}
+
+export function withTheme(
+  state: AppState,
+  themePreference: ThemePreference,
+  resolvedTheme: ResolvedTheme,
+): AppState {
+  return {
+    ...state,
+    resolvedTheme,
+    themePreference,
+  };
 }
 
 export function withDownloadError(state: AppState, message: string): AppState {
