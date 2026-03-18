@@ -1,0 +1,113 @@
+<?xml version="1.0" ?>
+<xml>
+  
+  
+  <records>
+    
+    
+    <record>
+      
+      
+      <rec-number>1</rec-number>
+      
+      
+      <ref-type name="Journal Article">17</ref-type>
+      
+      
+      <dates>
+        
+        
+        <year>2022</year>
+        
+      
+      </dates>
+      
+      
+      <titles>
+        
+        
+        <title>Attachment Present Record</title>
+        
+        
+        <secondary-title>Journal of Attachment Paths</secondary-title>
+        
+      
+      </titles>
+      
+      
+      <contributors>
+        
+        
+        <authors>
+          
+          
+          <author>Margaret Hamilton</author>
+          
+        
+        </authors>
+        
+      
+      </contributors>
+      
+      
+      <periodical>
+        
+        
+        <full-title>Journal of Attachment Paths</full-title>
+        
+      
+      </periodical>
+      
+      
+      <pages/>
+      
+      
+      <volume/>
+      
+      
+      <number/>
+      
+      
+      <abstract/>
+      
+      
+      <isbn/>
+      
+      
+      <urls>
+        
+        
+        <web-urls>
+          
+          
+          <url>https://example.test/attachment-record</url>
+          
+        
+        </web-urls>
+        
+        
+        <pdf-urls>
+          
+          
+          <url>${PDF_ROOT}/group-1/paper.pdf</url>
+          
+        
+        </pdf-urls>
+        
+      
+      </urls>
+      
+      
+      <notes>Attachment path should be normalized for checked-in goldens.
+
+Created: 2023-11-14T23:13:20
+Modified: 2023-11-14T23:13:20</notes>
+      
+    
+    </record>
+    
+  
+  </records>
+  
+
+</xml>

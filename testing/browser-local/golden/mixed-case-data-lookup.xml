@@ -1,0 +1,80 @@
+<?xml version="1.0" ?>
+<xml>
+  
+  
+  <records>
+    
+    
+    <record>
+      
+      
+      <rec-number>1</rec-number>
+      
+      
+      <ref-type name="Journal Article">17</ref-type>
+      
+      
+      <dates>
+        
+        
+        <year>2021</year>
+        
+      
+      </dates>
+      
+      
+      <titles>
+        
+        
+        <title>Mixed Case Data Folder</title>
+        
+        
+        <secondary-title/>
+        
+      
+      </titles>
+      
+      
+      <contributors>
+        
+        
+        <authors>
+          
+          
+          <author>Barbara Liskov</author>
+          
+        
+        </authors>
+        
+      
+      </contributors>
+      
+      
+      <pages/>
+      
+      
+      <volume/>
+      
+      
+      <number/>
+      
+      
+      <abstract/>
+      
+      
+      <isbn/>
+      
+      
+      <notes>Exercises case-insensitive .Data lookup.
+
+Created: 2023-11-14T23:13:20
+Modified: 2023-11-14T23:13:20</notes>
+      
+    
+    </record>
+    
+  
+  </records>
+  
+
+</xml>

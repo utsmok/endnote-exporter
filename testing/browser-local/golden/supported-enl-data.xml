@@ -1,0 +1,140 @@
+<?xml version="1.0" ?>
+<xml>
+  
+  
+  <records>
+    
+    
+    <record>
+      
+      
+      <rec-number>1</rec-number>
+      
+      
+      <ref-type name="Journal Article">17</ref-type>
+      
+      
+      <dates>
+        
+        
+        <year>2024</year>
+        
+        
+        <pub-dates>
+          
+          
+          <date>2024-05-01</date>
+          
+        
+        </pub-dates>
+        
+      
+      </dates>
+      
+      
+      <titles>
+        
+        
+        <title>Supported ENL Record</title>
+        
+        
+        <secondary-title>Journal of Synthetic Fixtures</secondary-title>
+        
+      
+      </titles>
+      
+      
+      <contributors>
+        
+        
+        <authors>
+          
+          
+          <author>Ada Lovelace</author>
+          
+          
+          <author>Grace Hopper</author>
+          
+        
+        </authors>
+        
+      
+      </contributors>
+      
+      
+      <periodical>
+        
+        
+        <full-title>Journal of Synthetic Fixtures</full-title>
+        
+      
+      </periodical>
+      
+      
+      <pages>10-18</pages>
+      
+      
+      <volume>12</volume>
+      
+      
+      <number>2</number>
+      
+      
+      <abstract>Deterministic fixture for parity validation.</abstract>
+      
+      
+      <isbn>978-1-4028-9462-6</isbn>
+      
+      
+      <publisher>Fixture Press</publisher>
+      
+      
+      <electronic-resource-num>10.1234/example.1</electronic-resource-num>
+      
+      
+      <language>English</language>
+      
+      
+      <urls>
+        
+        
+        <web-urls>
+          
+          
+          <url>https://example.test/supported-enl</url>
+          
+        
+        </web-urls>
+        
+      
+      </urls>
+      
+      
+      <keywords>
+        
+        
+        <keyword>fixtures</keyword>
+        
+        
+        <keyword>parity</keyword>
+        
+        
+        <keyword>browser-local</keyword>
+        
+      
+      </keywords>
+      
+      
+      <notes>Baseline supported fixture.
+
+Created: 2023-11-14T23:13:20
+Modified: 2023-11-14T23:13:20</notes>
+      
+    
+    </record>
+    
+  
+  </records>
+  
+
+</xml>

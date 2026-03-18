@@ -1,0 +1,159 @@
+{
+  "failureClassifications": {
+    "malformed-archive": "The uploaded file has a .zip suffix but cannot be opened as a ZIP archive.",
+    "missing-database": "Archive shape looks valid, but the extracted library is missing sdb/sdb.eni."
+  },
+  "fixtures": [
+    {
+      "archive": "fixtures/supported-enl-data.zip",
+      "classification": "supported",
+      "comparisonMode": "normalized-exact-xml",
+      "description": "Supported ZIP containing a .enl file plus sibling .Data folder with SQLite DB.",
+      "expectedRecordCount": 1,
+      "golden": "golden/supported-enl-data.xml",
+      "goldenSha256": "67b79885483bf1d0ff097331ca233ebcf9c9deabe87d14354d2251d1daa5c3f1",
+      "id": "supported-enl-data",
+      "libraryEntry": "SupportedLibrary.enl",
+      "libraryMode": "enl",
+      "notes": [],
+      "oracle": "current-python-exporter",
+      "sha256": "a5c8370dbf3c2dfd106f374176a9694a723267446e852943eee1f8da93f8bc8a",
+      "tags": [
+        "supported",
+        "zip",
+        "enl",
+        "data"
+      ]
+    },
+    {
+      "archive": "fixtures/supported-enlp-equivalent.zip",
+      "classification": "supported",
+      "comparisonMode": "normalized-exact-xml",
+      "description": "Supported ZIP containing an .enlp-equivalent package directory.",
+      "expectedRecordCount": 1,
+      "golden": "golden/supported-enlp-equivalent.xml",
+      "goldenSha256": "d27de86895d43b73e89fa33f83e17aa7c1847794523cd02611c2e50d8430dc71",
+      "id": "supported-enlp-equivalent",
+      "libraryEntry": "PackageLibrary.enlp",
+      "libraryMode": "enlp",
+      "notes": [],
+      "oracle": "current-python-exporter",
+      "sha256": "c13789262e87fe930e30afa57b5cb17d1576ec7f7b8132220694670c1ac68e95",
+      "tags": [
+        "supported",
+        "zip",
+        "enlp"
+      ]
+    },
+    {
+      "archive": "fixtures/missing-db.zip",
+      "classification": "expected-failure",
+      "comparisonMode": "failure-classification",
+      "description": "Expected failure: archive has library shell but no sdb/sdb.eni database file.",
+      "expectedFailure": "missing-database",
+      "expectedMessageSubstring": "Database file not found",
+      "expectedRecordCount": 0,
+      "id": "missing-db",
+      "libraryEntry": "MissingDatabase.enl",
+      "libraryMode": "enl",
+      "notes": [],
+      "sha256": "bfd058137852ebf400d196e714957450e008ae3d101a6f29dbee88113492174d",
+      "tags": [
+        "failure",
+        "missing-db"
+      ]
+    },
+    {
+      "archive": "fixtures/malformed-archive.zip",
+      "classification": "expected-failure",
+      "comparisonMode": "failure-classification",
+      "description": "Expected failure: file has .zip extension but is not a valid ZIP archive.",
+      "expectedFailure": "malformed-archive",
+      "expectedMessageSubstring": "File is not a zip file",
+      "expectedRecordCount": 0,
+      "id": "malformed-archive",
+      "libraryMode": "malformed",
+      "notes": [
+        "Text payload intentionally written with .zip extension."
+      ],
+      "sha256": "d910a7eaa2469d9bcb895867d7a39a493bd38e14488c273f93f0c1a3bfab288b",
+      "tags": [
+        "failure",
+        "malformed"
+      ]
+    },
+    {
+      "archive": "fixtures/attachment-present.zip",
+      "classification": "supported",
+      "comparisonMode": "normalized-exact-xml",
+      "description": "Supported ZIP containing attachment entries in PDF/ for path normalization coverage.",
+      "expectedRecordCount": 1,
+      "golden": "golden/attachment-present.xml",
+      "goldenSha256": "08e08cd8af011c9f976fa87479d71c5e08b68c41d8b4efa2e1b73ed89bc26f9e",
+      "id": "attachment-present",
+      "libraryEntry": "AttachmentLibrary.enl",
+      "libraryMode": "enl",
+      "normalizations": [
+        "pdf-root-placeholder"
+      ],
+      "notes": [],
+      "oracle": "current-python-exporter",
+      "sha256": "618921307a9b113d775f3c65aef943e606d118e16d88086793eedd3975b1972c",
+      "tags": [
+        "supported",
+        "attachments",
+        "path-normalization"
+      ]
+    },
+    {
+      "archive": "fixtures/mixed-case-data-lookup.zip",
+      "classification": "supported",
+      "comparisonMode": "normalized-exact-xml",
+      "description": "Supported ZIP with mixed-case .Data directory spelling for case-insensitive lookup.",
+      "expectedRecordCount": 1,
+      "golden": "golden/mixed-case-data-lookup.xml",
+      "goldenSha256": "d35c586a61a46b28c585a66c07da3b378628cad3f684a716ec02770788d3e284",
+      "id": "mixed-case-data-lookup",
+      "libraryEntry": "CaseSensitiveLibrary.enl",
+      "libraryMode": "enl",
+      "notes": [],
+      "oracle": "current-python-exporter",
+      "sha256": "04b5fd9fd9967c6d90f04b000a7ddb8570b78988be309cce17d92dd6bad36b2a",
+      "tags": [
+        "supported",
+        "case-insensitive",
+        "data"
+      ]
+    },
+    {
+      "archive": "fixtures/stress-large.zip",
+      "classification": "stress",
+      "comparisonMode": "normalized-exact-xml",
+      "description": "Larger synthetic ZIP for future browser performance and memory-envelope validation.",
+      "expectedRecordCount": 250,
+      "golden": "golden/stress-large.xml",
+      "goldenSha256": "f49eab7c04f6f76d4297c1582a9976b57f88d93bcd0f0833bb478023267249db",
+      "id": "stress-large",
+      "libraryEntry": "StressLibrary.enl",
+      "libraryMode": "enl",
+      "notes": [
+        "Contains 250 deterministic reference rows."
+      ],
+      "oracle": "current-python-exporter",
+      "sha256": "2ab9adc2f6d513f41c299245445a918a810279c49511d41c80b048d528de3052",
+      "tags": [
+        "stress",
+        "supported",
+        "performance"
+      ]
+    }
+  ],
+  "generatedAt": "2026-03-18",
+  "generator": "testing/browser-local/build_fixture_corpus.py",
+  "goldenPolicy": {
+    "failureFixtures": "No XML golden is stored; validation asserts the failure classification and a stable message fragment.",
+    "oracle": "current Python desktop exporter",
+    "successFixtures": "Golden XML is generated by exporting the extracted fixture through EndnoteExporter and normalizing attachment roots to ${PDF_ROOT}."
+  },
+  "version": 1
+}

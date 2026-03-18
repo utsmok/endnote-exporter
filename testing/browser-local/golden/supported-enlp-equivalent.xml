@@ -1,0 +1,89 @@
+<?xml version="1.0" ?>
+<xml>
+  
+  
+  <records>
+    
+    
+    <record>
+      
+      
+      <rec-number>1</rec-number>
+      
+      
+      <ref-type name="Book">6</ref-type>
+      
+      
+      <dates>
+        
+        
+        <year>2023</year>
+        
+      
+      </dates>
+      
+      
+      <titles>
+        
+        
+        <title>Supported ENLP Package</title>
+        
+        
+        <secondary-title/>
+        
+      
+      </titles>
+      
+      
+      <contributors>
+        
+        
+        <authors>
+          
+          
+          <author>Katherine Johnson</author>
+          
+        
+        </authors>
+        
+      
+      </contributors>
+      
+      
+      <pages/>
+      
+      
+      <volume/>
+      
+      
+      <number/>
+      
+      
+      <abstract/>
+      
+      
+      <isbn/>
+      
+      
+      <pub-location>Twente</pub-location>
+      
+      
+      <publisher>Package House</publisher>
+      
+      
+      <edition>Second</edition>
+      
+      
+      <notes>Synthetic .enlp-equivalent package fixture.
+
+Created: 2023-11-14T23:13:20
+Modified: 2023-11-14T23:13:20</notes>
+      
+    
+    </record>
+    
+  
+  </records>
+  
+
+</xml>
