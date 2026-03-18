@@ -41,7 +41,10 @@ export interface AttachmentExportOptions {
 
 export interface ExportItemSummary {
   author: string;
+  doi: string;
+  doiUrl?: string;
   hasPdfAttachment: boolean;
+  journal: string;
   recordId: number;
   title: string;
   year: string;

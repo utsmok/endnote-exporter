@@ -141,10 +141,14 @@ export function createExportContext(
 function buildItemSummaries(context: ExportContext): ExportItemSummary[] {
   return context.queryResult.referenceRows.map((reference) => {
     const attachments = context.attachmentResolution.byReferenceId[reference.id];
+    const doi = summarizeDoi(reference.electronic_resource_number);
 
     return {
       author: summarizeAuthor(reference.author),
+      doi: doi.display,
+      ...(doi.url ? { doiUrl: doi.url } : {}),
       hasPdfAttachment: Boolean(attachments && attachments.count > 0),
+      journal: summarizeJournal(reference.secondary_title),
       recordId: reference.id,
       title: typeof reference.title === 'string' && reference.title.trim().length > 0
         ? reference.title.trim()
@@ -167,6 +171,75 @@ function summarizeAuthor(author: EndnoteQueryResult['referenceRows'][number]['au
     .find((entry) => entry.length > 0);
 
   return firstLine ?? '—';
+}
+
+function summarizeJournal(
+  journal: EndnoteQueryResult['referenceRows'][number]['secondary_title'],
+): string {
+  if (journal === null || journal === undefined) {
+    return '—';
+  }
+
+  const normalizedJournal = String(journal).trim();
+  return normalizedJournal.length > 0 ? normalizedJournal : '—';
+}
+
+function summarizeDoi(
+  doi: EndnoteQueryResult['referenceRows'][number]['electronic_resource_number'],
+): { display: string; url?: string } {
+  if (doi === null || doi === undefined) {
+    return { display: '—' };
+  }
+
+  const rawValue = String(doi).trim();
+  if (rawValue.length === 0) {
+    return { display: '—' };
+  }
+
+  const normalizedValue = rawValue.replace(/^doi:\s*/iu, '').trim();
+  const normalizedUrl = buildDoiUrl(normalizedValue);
+
+  if (normalizedUrl) {
+    const display = normalizedValue
+      .replace(/^https?:\/\/(dx\.)?doi\.org\//iu, '')
+      .trim();
+
+    return {
+      display: display.length > 0 ? display : normalizedValue,
+      url: normalizedUrl,
+    };
+  }
+
+  return { display: normalizedValue };
+}
+
+function buildDoiUrl(value: string): string | undefined {
+  const normalizedValue = value.trim();
+  if (normalizedValue.length === 0) {
+    return undefined;
+  }
+
+  if (/^https?:\/\//iu.test(normalizedValue)) {
+    try {
+      const parsed = new URL(normalizedValue);
+      return /^https?:$/iu.test(parsed.protocol) ? parsed.toString() : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  const doiMatch = normalizedValue.match(/10\.\d{4,9}\/[^^\s]+/iu);
+  if (!doiMatch) {
+    return undefined;
+  }
+
+  const canonicalDoi = doiMatch[0]
+    .replace(/\s+/gu, '')
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+
+  return `https://doi.org/${canonicalDoi}`;
 }
 
 /**
