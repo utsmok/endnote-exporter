@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createController } from './controller';
+import {
+  createController,
+  syncSessionStateMarker,
+  takeSessionNotice,
+} from './controller';
 import {
   createInitialState,
   withDownloadError,
@@ -211,5 +215,40 @@ describe('createController', () => {
     expect(removeItem).toHaveBeenCalledWith('endnote-exporter.theme-preference');
     expect(documentElement.dataset.theme).toBe('light');
     expect(documentElement.dataset.themePreference).toBe('system');
+  });
+
+  it('stores only phase markers for private session-loss recovery', () => {
+    const storage = {
+      removeItem: vi.fn(),
+      setItem: vi.fn(),
+    };
+    const state = withExportResult(createInitialState(buildRuntime()), buildExportResult());
+
+    syncSessionStateMarker({
+      ...state,
+      selectedInputLabel: 'sensitive-library.zip',
+    }, storage);
+
+    expect(storage.setItem).toHaveBeenCalledOnce();
+    const rawValue = storage.setItem.mock.calls[0]?.[1];
+
+    expect(rawValue).toContain('conversion-complete');
+    expect(rawValue).not.toContain('sensitive-library.zip');
+  });
+
+  it('surfaces a conservative session-loss notice when in-memory review data was cleared', () => {
+    const storage = {
+      getItem: vi.fn(() => JSON.stringify({
+        phase: 'conversion-complete',
+        version: 1,
+      })),
+      removeItem: vi.fn(),
+    };
+
+    const notice = takeSessionNotice(storage);
+
+    expect(notice?.title).toBe('Previous review data was cleared');
+    expect(notice?.message).toContain('not restored after refresh');
+    expect(storage.removeItem).toHaveBeenCalled();
   });
 });

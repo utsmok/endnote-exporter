@@ -15,9 +15,11 @@ export async function gotoApp(page: Page): Promise<void> {
   await page.goto('/');
 
   await expect(
-    page.getByRole('heading', { name: 'Convert EndNote Libraries to Zotero' }),
+    page.getByRole('heading', { name: 'Convert EndNote Libraries to Zotero XML' }),
   ).toBeVisible();
-  await expect(page.getByText(/Worker initialised successfully\./)).toBeVisible();
+  await expect(page.locator('.status-row__title')).toHaveText('Ready for intake');
+  await expect(page.getByRole('heading', { name: 'Workflow strip' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Trust and capability' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'System information' })).toHaveCount(0);
   await expect(page.locator('#attachment-base-path')).toBeVisible();
   await expect(page.locator('#zip-file-input')).toBeVisible();
@@ -29,7 +31,7 @@ export async function uploadFixtureZip(page: Page, fileName: string): Promise<vo
 
 export async function expectConversionComplete(page: Page): Promise<void> {
   await expect(
-    page.getByRole('heading', { name: 'Conversion Complete' }),
+    page.getByRole('heading', { name: 'Review workspace' }),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Download Zotero XML' })).toBeVisible();
 }
