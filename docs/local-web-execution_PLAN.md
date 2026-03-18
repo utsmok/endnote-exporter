@@ -689,9 +689,9 @@ The following gates should be required before claiming browser-local MVP readine
 | T010 | COMPLETED | Updated minimal browser completion/download flow to surface exported vs skipped rows, attachment mode/counts, and warning-driven completion status aligned with remediated T008/T009 behavior. | 2026-03-18 |
 | T011 | COMPLETED | Added capability-gated direct-folder intake via a secure-context directory-picker enhancement, reused the shared prepared-library normalization path for directory entries, kept ZIP-first as the default baseline UI flow, and added focused tests for gating and directory normalization. | 2026-03-18 |
 | T012 | COMPLETED | Verified layered Vitest coverage (unit, fixture-backed integration/parity, worker query, directory intake), Playwright Chromium smoke coverage, browser-matrix validation for supported/best-effort tiers, reusable `web-ci.yml` quality gates from root CI, and tightened local Playwright served-mode reliability with a configurable strict port plus opt-in server reuse. | 2026-03-18 |
-| T013 | PENDING | Publish user docs, privacy docs, support matrix, and troubleshooting guidance. | |
-| T014 | PENDING | Evaluate optional single-file HTML packaging. | |
-| T015 | PENDING | Define Electron/Tauri fallback criteria and wrapper decision record. | |
+| T013 | COMPLETED | Published browser-local user guide, troubleshooting guidance, release operations notes, and README links aligned with the implemented served-mode ZIP-first workflow, experimental directory intake, XML download, and attachment base-path behavior. | 2026-03-18 |
+| T014 | COMPLETED | Added a conservative no-go evaluation for optional single-file HTML packaging based on the current served multi-file Vite build, dedicated worker, separate SQLite WASM asset, and existing support contract. | 2026-03-18 |
+| T015 | COMPLETED | Added Electron/Tauri fallback notes, measurable wrapper-trigger decision criteria, and explicit rollback boundaries while keeping wrappers positioned as follow-on options rather than baseline architecture. | 2026-03-18 |
 
 ## Rollback Plan
 
