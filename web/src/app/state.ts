@@ -16,34 +16,73 @@ export type ThemePreference = 'system' | 'light' | 'dark';
 
 export type ResolvedTheme = 'light' | 'dark';
 
+export type WorkflowStage = 'boot' | 'intake' | 'preparation' | 'conversion' | 'review' | 'recovery';
+
+export type StatusSeverity = 'informational' | 'success' | 'warning' | 'error';
+
+export interface RecoveryGuidance {
+  detail: string;
+  label: string;
+}
+
+export interface SessionNotice {
+  message: string;
+  recoveryGuidance: RecoveryGuidance[];
+  severity: StatusSeverity;
+  title: string;
+}
+
+export interface StatusDescriptor {
+  liveMessage?: string;
+  message: string;
+  recoveryGuidance?: RecoveryGuidance[];
+  severity: StatusSeverity;
+  title: string;
+  workflowStage: WorkflowStage;
+}
+
 export interface AppState {
   attachmentBasePath: string;
   downloadErrorMessage: string | undefined;
   isItemModalOpen: boolean;
   notes: string[];
   phase: AppPhase;
+  recoveryGuidance: RecoveryGuidance[];
   resolvedTheme: ResolvedTheme;
   runtime: BrowserRuntimeInfo;
   selectedInputLabel?: string;
+  sessionNotice: SessionNotice | undefined;
+  statusLiveMessage: string;
   statusMessage: string;
+  statusSeverity: StatusSeverity;
+  statusTitle: string;
   themePreference: ThemePreference;
+  workflowStage: WorkflowStage;
   workerStatus: WorkerStatus;
   exportResult?: ExportResult;
 }
 
 export function createInitialState(runtime: BrowserRuntimeInfo): AppState {
+  const statusMessage = runtime.isServedMode
+    ? 'Bootstrapping the worker-backed served-mode workspace.'
+    : 'Served mode is required; file:// launch is intentionally unsupported.';
+
   return {
     attachmentBasePath: '',
     downloadErrorMessage: undefined,
     isItemModalOpen: false,
     notes: [...runtime.notes],
     phase: 'booting',
+    recoveryGuidance: [],
     resolvedTheme: 'dark',
     runtime,
-    statusMessage: runtime.isServedMode
-      ? 'Bootstrapping the worker-backed served-mode workspace.'
-      : 'Served mode is required; file:// launch is intentionally unsupported.',
+    sessionNotice: undefined,
+    statusLiveMessage: statusMessage,
+    statusMessage,
+    statusSeverity: 'informational',
+    statusTitle: 'Initialising workspace',
     themePreference: 'system',
+    workflowStage: 'boot',
     workerStatus: 'starting',
   };
 }
@@ -56,6 +95,18 @@ export function withAttachmentBasePath(state: AppState, attachmentBasePath: stri
   return { ...state, attachmentBasePath };
 }
 
+export function withStatus(state: AppState, status: StatusDescriptor): AppState {
+  return {
+    ...state,
+    recoveryGuidance: status.recoveryGuidance ?? [],
+    statusLiveMessage: status.liveMessage ?? status.message,
+    statusMessage: status.message,
+    statusSeverity: status.severity,
+    statusTitle: status.title,
+    workflowStage: status.workflowStage,
+  };
+}
+
 export function withTheme(
   state: AppState,
   themePreference: ThemePreference,
@@ -65,6 +116,13 @@ export function withTheme(
     ...state,
     resolvedTheme,
     themePreference,
+  };
+}
+
+export function withSessionNotice(state: AppState, sessionNotice?: SessionNotice): AppState {
+  return {
+    ...state,
+    sessionNotice,
   };
 }
 
@@ -82,7 +140,11 @@ export function withItemModalOpen(state: AppState, isItemModalOpen: boolean): Ap
 }
 
 export function withStatusMessage(state: AppState, message: string): AppState {
-  return { ...state, statusMessage: message };
+  return {
+    ...state,
+    statusLiveMessage: message,
+    statusMessage: message,
+  };
 }
 
 export function withNote(state: AppState, note: string): AppState {
@@ -96,6 +158,7 @@ export function withExportResult(state: AppState, result: ExportResult): AppStat
     exportResult: result,
     isItemModalOpen: false,
     phase: 'conversion-complete',
+    sessionNotice: undefined,
   };
 }
 
@@ -105,6 +168,7 @@ export function withSelectedInput(state: AppState, label: string): AppState {
     downloadErrorMessage: undefined,
     selectedInputLabel: label,
     phase: 'converting',
+    sessionNotice: undefined,
   };
 }
 
@@ -120,5 +184,6 @@ export function clearExportResult(state: AppState): AppState {
     downloadErrorMessage: undefined,
     isItemModalOpen: false,
     phase: 'selecting-input',
+    sessionNotice: undefined,
   };
 }

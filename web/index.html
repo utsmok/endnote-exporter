@@ -6,13 +6,31 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0"
     />
+    <meta
+      name="description"
+      content="Browser-local EndNote to Zotero XML conversion with ZIP-first intake, worker-backed processing, and explicit support boundaries."
+    />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#11161d" />
     <script>
       (() => {
         const storageKey = 'endnote-exporter.theme-preference';
+        const themeColors = {
+          dark: '#11161d',
+          light: '#f3eee6',
+        };
         const root = document.documentElement;
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]');
         const resolveSystemTheme = () => (
           window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
         );
+
+        const applyTheme = (themePreference, resolvedTheme) => {
+          root.dataset.theme = resolvedTheme;
+          root.dataset.themePreference = themePreference;
+          root.style.colorScheme = resolvedTheme;
+          themeColorMeta?.setAttribute('content', themeColors[resolvedTheme]);
+        };
 
         try {
           const storedPreference = window.localStorage.getItem(storageKey);
@@ -23,20 +41,17 @@
             ? resolveSystemTheme()
             : themePreference;
 
-          root.dataset.theme = resolvedTheme;
-          root.dataset.themePreference = themePreference;
-          root.style.colorScheme = resolvedTheme;
+          applyTheme(themePreference, resolvedTheme);
         } catch {
           const resolvedTheme = resolveSystemTheme();
-          root.dataset.theme = resolvedTheme;
-          root.dataset.themePreference = 'system';
-          root.style.colorScheme = resolvedTheme;
+          applyTheme('system', resolvedTheme);
         }
       })();
     </script>
-    <title>EndNote Exporter — Browser Workspace</title>
+    <title>EndNote Exporter — Browser-local Workspace</title>
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
