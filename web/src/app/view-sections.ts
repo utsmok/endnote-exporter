@@ -72,7 +72,6 @@ export function renderAppView(state: AppState): string {
         ${renderWorkflowStrip(state)}
         ${renderTrustSection(state)}
         ${renderMainSection(state)}
-        ${renderSupportSection(state)}
       </section>
     </main>
   `;
@@ -105,7 +104,7 @@ function renderHeroSection(state: AppState): string {
               </div>
               ${renderTooltip(
                 'worker-status-help',
-                'How browser-local mode works',
+                'How does it work?',
                 buildWorkerTooltip(state),
               )}
             </div>
@@ -874,50 +873,6 @@ function renderRecoveryGuidance(state: AppState, tone: 'hero' | 'card' = 'hero')
   `;
 }
 
-function renderSupportSection(state: AppState): string {
-  const severityPresentation = getSeverityPresentation(state.statusSeverity);
-  const supportGuidance = state.recoveryGuidance.length > 0
-    ? state.recoveryGuidance
-    : buildDefaultSupportGuidance(state);
-
-  return `
-    <section class="card support-grid" aria-labelledby="support-grid-title">
-      <div class="section-heading section-heading--tight">
-        <div>
-          <div class="section-heading__title">
-            <h2 id="support-grid-title">Recovery and help</h2>
-            <span class="soft-chip">Severity taxonomy</span>
-          </div>
-          <p class="instruction section-subcopy">
-            Recovery, capability, and interrupted-session guidance stay visible below the workspace so degraded states remain explicit and privacy-aligned.
-          </p>
-        </div>
-      </div>
-      <div class="support-grid__cards">
-        <article class="support-card support-card--${escapeHtml(state.statusSeverity)}">
-          <p class="support-card__eyebrow">Current severity</p>
-          <h3>${escapeHtml(severityPresentation.label)}</h3>
-          <p class="support-card__copy">${escapeHtml(severityPresentation.description)}</p>
-        </article>
-        ${renderCapabilitySupportCard(state)}
-        <article class="support-card support-card--neutral">
-          <p class="support-card__eyebrow">Recovery playbook</p>
-          <h3>${state.phase === 'conversion-complete' ? 'Keep the review flow in one session' : 'Use the supported baseline path'}</h3>
-          <ul class="support-card__list">
-            ${supportGuidance.map((item) => `
-              <li>
-                <strong>${escapeHtml(item.label)}</strong>
-                <span>${escapeHtml(item.detail)}</span>
-              </li>
-            `).join('')}
-          </ul>
-        </article>
-        ${state.sessionNotice ? renderSessionSupportCard(state) : ''}
-      </div>
-    </section>
-  `;
-}
-
 function renderCapabilitySupportCard(state: AppState): string {
   const degradedBySecureContext = !state.runtime.isSecureContext;
   const directoryUnavailable = !state.runtime.directoryIntake.available;
@@ -961,64 +916,12 @@ function renderCapabilitySupportCard(state: AppState): string {
   `;
 }
 
-function renderSessionSupportCard(state: AppState): string {
-  if (!state.sessionNotice) {
-    return '';
-  }
-
-  return `
-    <article class="support-card support-card--${escapeHtml(state.sessionNotice.severity)}">
-      <p class="support-card__eyebrow">Session continuity</p>
-      <h3>${escapeHtml(state.sessionNotice.title)}</h3>
-      <p class="support-card__copy">${escapeHtml(state.sessionNotice.message)}</p>
-      <ul class="support-card__list">
-        ${state.sessionNotice.recoveryGuidance.map((item) => `
-          <li>
-            <strong>${escapeHtml(item.label)}</strong>
-            <span>${escapeHtml(item.detail)}</span>
-          </li>
-        `).join('')}
-      </ul>
-    </article>
-  `;
-}
-
-function buildDefaultSupportGuidance(state: AppState): AppState['recoveryGuidance'] {
-  if (state.phase === 'conversion-complete') {
-    return [
-      {
-        detail: 'Check warnings, skipped records, and attachment indicators before importing the XML into Zotero.',
-        label: 'Review the inline workspace first',
-      },
-      {
-        detail: 'Download the XML in this session because browser-local review data is intentionally ephemeral.',
-        label: 'Download before refreshing',
-      },
-    ];
-  }
-
-  return [
-    {
-      detail: 'Choose a validated library ZIP as the canonical supported browser-local intake path.',
-      label: 'Start with one ZIP file',
-    },
-    {
-      detail: 'Supply a library location only when you want exported XML to include local PDF links.',
-      label: 'Keep attachment linking optional',
-    },
-    {
-      detail: 'Use the Python desktop exporter when your workflow needs broader desktop runtime access than the browser can honestly provide.',
-      label: 'Use the desktop fallback when needed',
-    },
-  ];
-}
-
 function buildWorkerTooltip(state: AppState): string {
   if (state.workerStatus === 'error') {
-    return 'Served mode and dedicated worker support are required for the browser-local conversion pipeline.';
+    return 'The worker encountered an error.';
   }
 
   return state.runtime.directoryIntake.available
-    ? 'ZIP upload is the supported baseline; the folder picker is a progressive enhancement when the browser supports it.'
-    : 'The worker is ready. ZIP upload is available everywhere this served browser-local workspace is supported.';
+    ? 'ZIP upload is the initially prefered method; a folder picker will be visible as a secondary option when the browser supports it.'
+    : 'ZIP upload is supported on this browser.'
 }
