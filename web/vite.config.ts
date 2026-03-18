@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  base: '/endnote-exporter/',
   build: {
     outDir: 'dist',
     sourcemap: true,
