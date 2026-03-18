@@ -17,9 +17,9 @@ test.describe('browser support matrix baseline', () => {
     await gotoApp(page);
 
     await expect(
-      page.getByText('Choose a ZIP file containing your EndNote library (.enl + .Data folder or .enlp package). This ZIP-first flow is the supported baseline.'),
+      page.getByText('Upload a ZIP that contains either an .enl library plus matching .Data folder or an .enlp package export.'),
     ).toBeVisible();
-    await expect(page.getByText('Choose ZIP File')).toBeVisible();
+    await expect(page.getByText('Choose ZIP file')).toBeVisible();
 
     if (browserName === 'chromium') {
       await expect(page.getByText(/Experimental direct-folder intake|Direct-folder intake unavailable here/)).toBeVisible();
