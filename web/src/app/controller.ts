@@ -559,7 +559,7 @@ export function createSessionNoticeFromMarker(phase: SessionStateMarkerPhase): S
       message: 'A previous in-memory conversion was interrupted. For privacy, progress is not restored after refresh or tab replacement.',
       recoveryGuidance: [
         {
-          detail: 'Choose the same ZIP again to restart conversion in this served session.',
+          detail: 'Select the same ZIP again to restart the conversion.',
           label: 'Re-select the library ZIP',
         },
         {
@@ -573,14 +573,14 @@ export function createSessionNoticeFromMarker(phase: SessionStateMarkerPhase): S
   }
 
   return {
-    message: 'A previous in-memory review workspace was cleared. Export results are intentionally not restored after refresh to keep browser-local data ephemeral.',
+    message: 'A previous conversion result was cleared on refresh. Results are not restored after page reload for privacy reasons.',
     recoveryGuidance: [
       {
         detail: 'Run the same ZIP again if you still need to inspect the result or download a fresh XML file.',
         label: 'Re-run the ZIP when needed',
       },
       {
-        detail: 'Download the XML promptly after review if you do not want to repeat the browser-local conversion step.',
+        detail: "Download the XML before refreshing — results are not saved between sessions.",
         label: 'Finish download in the same session',
       },
     ],

@@ -15,7 +15,7 @@ import {
 
 const SEVERITY_LABELS: Record<StatusSeverity, string> = {
   error: 'Action required',
-  informational: 'Support note',
+  informational: 'Info',
   success: 'Ready',
   warning: 'Review required',
 };
@@ -35,22 +35,22 @@ const WORKFLOW_STRIP_STEPS: Array<{
   label: string;
 }> = [
   {
-    detail: 'Choose a validated library ZIP from disk.',
+    detail: 'Upload your EndNote library as a ZIP file.',
     key: 'intake',
-    label: '1 · Intake',
+    label: '1 · Upload',
   },
   {
-    detail: 'Verify the library shape and attachment metadata.',
+    detail: 'Your library structure and attachments are checked.',
     key: 'preparation',
     label: '2 · Prepare',
   },
   {
-    detail: 'Generate Zotero XML inside the browser worker.',
+    detail: 'The XML for Zotero is generated in the browser.',
     key: 'conversion',
     label: '3 · Convert',
   },
   {
-    detail: 'Review exported items inline before download.',
+    detail: 'Review your exported records, then download the XML.',
     key: 'review',
     label: '4 · Review',
   },
@@ -87,7 +87,7 @@ function renderHeroSection(state: AppState): string {
               <p class="eyebrow">EndNote Exporter</p>
               <h1>Convert EndNote Library to XML</h1>
               <p class="lede">
-                Convert your EndNote library to Zotero XML right in the browser. Start by uploading a validated library ZIP, then review the results inline before downloading the XML for Zotero import.
+                Convert your EndNote library to Zotero XML — right in your browser, with nothing uploaded to a server. Upload your library ZIP, review the exported records, then download the XML to import into Zotero.
               </p>
             </div>
             ${renderThemeToggle(state)}
@@ -127,16 +127,16 @@ function renderPrimaryTaskPanel(state: AppState): string {
     case 'booting':
       return `
         <div class="task-card__header">
-          <p class="eyebrow">Workspace start</p>
-          <h2 id="primary-task-title" tabindex="-1">Preparing the conversion surface</h2>
+          <p class="eyebrow">Starting up</p>
+          <h2 id="primary-task-title" tabindex="-1">Getting ready…</h2>
           <p class="instruction section-subcopy">
-            The served worker boundary is loading now. ZIP intake will appear here once the browser-local workspace is ready.
+            Loading in the background. File upload will appear here once ready.
           </p>
         </div>
         <div class="task-card__state task-card__state--progress">
           <div class="spinner" aria-hidden="true"></div>
           <div>
-            <p class="task-card__state-title">Initialising worker and runtime checks</p>
+            <p class="task-card__state-title">Initialising…</p>
             <p class="task-card__state-copy">${escapeHtml(state.statusMessage)}</p>
           </div>
         </div>
@@ -147,7 +147,7 @@ function renderPrimaryTaskPanel(state: AppState): string {
           <p class="eyebrow">Primary task</p>
           <h2 id="primary-task-title" tabindex="-1">Converting your library</h2>
           <p class="instruction section-subcopy">
-            The selected input is being processed in the worker. Results will appear in the inline review workspace below.
+            Your library is being processed. Results will appear in the review area below.
           </p>
         </div>
         <div class="task-card__state task-card__state--progress">
@@ -164,14 +164,14 @@ function renderPrimaryTaskPanel(state: AppState): string {
           <p class="eyebrow">Primary task complete</p>
           <h2 id="primary-task-title" tabindex="-1">Review, then download</h2>
           <p class="instruction section-subcopy">
-            The inline workspace below is now the default review path. Download when the exported items look correct.
+            Check the results below, then download the XML when you're happy.
           </p>
         </div>
         <div class="task-card__state">
           <div>
-            <p class="task-card__state-title">Use the review workspace actions below</p>
+            <p class="task-card__state-title">Your results are ready below</p>
             <p class="task-card__state-copy">
-              The canonical download and reset controls now live beside the inline results table so the desktop review path stays in one place.
+              Download and reset buttons are in the results section below.
             </p>
           </div>
         </div>
@@ -182,16 +182,16 @@ function renderPrimaryTaskPanel(state: AppState): string {
       return `
         <div class="task-card__header">
           <p class="eyebrow">Recovery</p>
-          <h2 id="primary-task-title" tabindex="-1">Return to the supported baseline</h2>
+          <h2 id="primary-task-title" tabindex="-1">Something went wrong</h2>
           <p class="instruction section-subcopy">
-            Resolve the current browser issue, then retry from the ZIP-first path.
+            Check the error details below, then try again.
           </p>
         </div>
         <div class="task-card__state">
           <div>
-            <p class="task-card__state-title">Reset from the recovery panel below</p>
+            <p class="task-card__state-title">Use the Reset button below</p>
             <p class="task-card__state-copy">
-              The detailed recovery notes and the canonical reset control stay grouped in the recovery surface further down the page.
+              Error details and the reset button are in the section below.
             </p>
           </div>
         </div>
@@ -209,15 +209,15 @@ function renderInputSelectionPanel(state: AppState): string {
         <div class="section-heading section-heading--tight">
           <div>
             <div class="section-heading__title">
-              <p class="enhancement-eyebrow">Direct-folder intake</p>
+              <p class="enhancement-eyebrow">Folder upload</p>
               ${renderTooltip(
                 'directory-intake-help',
-                'When direct-folder intake appears',
-                'Folder selection is offered only in served, secure browser contexts that expose the required directory picker APIs.',
+                'About folder upload',
+                'Folder upload is only available in browsers that support the required folder picker feature.',
               )}
             </div>
             <p class="instruction section-subcopy">
-              Available here as a secondary capability when you already have a local library folder ready.
+              Use this to select your EndNote library folder directly instead of creating a ZIP.
             </p>
           </div>
           <span class="soft-chip">Experimental</span>
@@ -232,38 +232,33 @@ function renderInputSelectionPanel(state: AppState): string {
         <div class="section-heading section-heading--tight">
           <div>
             <div class="section-heading__title">
-              <p class="enhancement-eyebrow">Direct-folder intake unavailable here</p>
+              <p class="enhancement-eyebrow">Folder upload not available</p>
               ${renderTooltip(
                 'directory-intake-unavailable-help',
-                'Why the folder picker is unavailable',
-                'ZIP upload remains the supported baseline. The folder picker appears only when the browser exposes the required secure-context capability.',
+                'About folder upload',
+                'Folder upload requires browser features not available here. Use ZIP upload instead.',
               )}
             </div>
             <p class="instruction section-subcopy">
-              Continue with ZIP upload for the supported cross-browser path.
+              Upload a ZIP file to proceed.
             </p>
           </div>
-          <span class="soft-chip">ZIP-first baseline</span>
+          <span class="soft-chip">Not available</span>
         </div>
       </div>
     `;
 
   const fileInputText = state.selectedInputLabel
     ? `Current selection: ${escapeHtml(state.selectedInputLabel)}`
-    : 'Drop a validated library ZIP here or browse for one from your device.';
+    : 'Drop your library ZIP here, or click to browse.';
 
   return `
     <div class="task-card__header">
       <p class="eyebrow">Primary task</p>
       <h2 id="primary-task-title" tabindex="-1">Start with a library ZIP</h2>
       <p class="instruction section-subcopy">
-        Keep the supported path simple: upload one validated ZIP, review the result inline, then download the XML.
+        Upload your EndNote library as a ZIP, check the results, then download the Zotero XML.
       </p>
-    </div>
-    <div class="chip-row">
-      <span class="soft-chip">ZIP-first</span>
-      <span class="soft-chip">Worker-backed</span>
-      <span class="soft-chip">Desktop review</span>
     </div>
     <div class="file-input-wrapper file-input-wrapper--task-card">
       <input
@@ -279,10 +274,10 @@ function renderInputSelectionPanel(state: AppState): string {
     </div>
     <div class="inline-meta-row" role="note">
       <span class="inline-meta-pill">Drag-and-drop supported</span>
-      <span class="inline-meta-pill">Served mode required</span>
+      <span class="inline-meta-pill">Runs locally in your browser</span>
       ${renderTooltip(
         'zip-upload-help',
-        'How to start a conversion',
+        'Accepted file formats',
         'Upload a ZIP that contains either an .enl library plus matching .Data folder or an .enlp package export.',
       )}
     </div>
@@ -291,7 +286,7 @@ function renderInputSelectionPanel(state: AppState): string {
         <div>
           <p class="secondary-options__eyebrow">Secondary options</p>
           <p class="instruction section-subcopy">
-            Only use the attachment-path field or folder picker when the default ZIP-first flow is not enough.
+            These options are only needed in specific cases.
           </p>
         </div>
       </div>
@@ -314,10 +309,10 @@ function renderInputSelectionPanel(state: AppState): string {
           placeholder="/Users/me/Documents or C:\\Users\\me\\Documents\\MyLibrary.enlp"
         />
         <p class="field-help">
-          Browsers do not expose native absolute paths automatically. Supply one only when you want exported XML items to include PDF file links.
+          Browsers can't access your file system paths automatically. Only add this if you want PDF links in the exported XML.
         </p>
         <details class="disclosure disclosure--compact">
-          <summary>Supported archive shapes and PDF-link rules</summary>
+          <summary>Accepted ZIP formats</summary>
           <div class="disclosure__content">
             <ul>
               <li><code>.zip</code> files containing <code>.enl</code> + <code>.Data</code></li>
@@ -338,7 +333,7 @@ function renderWorkflowStrip(state: AppState): string {
       <div class="section-heading section-heading--tight">
         <div>
           <div class="section-heading__title">
-            <h2 id="workflow-strip-title">Workflow strip</h2>
+            <h2 id="workflow-strip-title">How it works</h2>
             <span class="soft-chip">${escapeHtml(state.statusTitle)}</span>
           </div>
           <p class="instruction section-subcopy">
@@ -425,42 +420,42 @@ function getWorkflowStepState(
 
 function renderTrustSection(state: AppState): string {
   const folderCapabilityCopy = state.runtime.directoryIntake.available
-    ? 'Folder intake is available here as a secondary capability, but ZIP upload remains the dominant supported path.'
-    : 'Folder intake is not available in this browser context, so the supported baseline stays ZIP-first.';
+    ? 'Folder upload is also available in this browser, but ZIP upload is the recommended method.'
+    : "Folder upload isn't available in this browser. Use ZIP upload instead.";
 
   return `
     <section class="card trust-grid" aria-labelledby="trust-grid-title">
       <div class="section-heading section-heading--tight">
         <div>
           <div class="section-heading__title">
-            <h2 id="trust-grid-title">Trust and capability</h2>
-            <span class="soft-chip">Browser-local proof</span>
+            <h2 id="trust-grid-title">How your data is handled</h2>
+            <span class="soft-chip">Privacy</span>
           </div>
           <p class="instruction section-subcopy">
-            Persistent support messaging stays visible so the browser-local contract is clear before, during, and after conversion.
+            Your library files never leave your browser — conversion runs entirely on your device.
           </p>
         </div>
       </div>
       <div class="trust-grid__cards">
         <article class="trust-card">
-          <p class="trust-card__eyebrow">Local processing</p>
-          <h3>Worker-backed and browser-local</h3>
-          <p>No upload to a remote service is implied here. Conversion runs in the browser worker inside the served session.</p>
+          <p class="trust-card__eyebrow">Local only</p>
+          <h3>Runs entirely in your browser</h3>
+          <p>Your library files are never sent to a server. Conversion happens in your browser.</p>
         </article>
         <article class="trust-card">
-          <p class="trust-card__eyebrow">Supported baseline</p>
-          <h3>ZIP-first stays primary</h3>
+          <p class="trust-card__eyebrow">File format</p>
+          <h3>ZIP upload is the main method</h3>
           <p>${escapeHtml(folderCapabilityCopy)}</p>
         </article>
         <article class="trust-card">
-          <p class="trust-card__eyebrow">Attachment policy</p>
+          <p class="trust-card__eyebrow">PDF attachments</p>
           <h3>PDF links are opt-in</h3>
-          <p>Attachment metadata is preserved, while absolute PDF paths require a manual library location because browsers do not expose native paths automatically.</p>
+          <p>Attachment metadata is always preserved. To include local PDF links in the output, add your library path in the options — browsers can't access local paths automatically.</p>
         </article>
         <article class="trust-card">
-          <p class="trust-card__eyebrow">Fallback</p>
+          <p class="trust-card__eyebrow">Desktop app</p>
           <h3>Desktop exporter remains available</h3>
-          <p>Use the Python desktop application when your workflow needs broader desktop runtime behaviour than the browser surface can honestly provide.</p>
+          <p>Use the Python desktop application if you need capabilities not available in the browser version.</p>
         </article>
       </div>
     </section>
@@ -492,7 +487,7 @@ function renderBootSection(state: AppState): string {
       <div class="section-heading section-heading--tight">
         <div>
           <div class="section-heading__title">
-            <h2>Review workspace is preparing</h2>
+            <h2>Getting ready…</h2>
             <span class="soft-chip">Stage · ${escapeHtml(WORKFLOW_STAGE_LABELS[state.workflowStage])}</span>
           </div>
           <p class="instruction section-subcopy">${escapeHtml(state.statusMessage)}</p>
@@ -501,8 +496,8 @@ function renderBootSection(state: AppState): string {
       <div class="progress-indicator">
         <div class="spinner" aria-hidden="true"></div>
         <div class="progress-indicator__copy">
-          <p class="progress-indicator__stage">Preparation</p>
-          <p class="progress-indicator__title">Loading the served-mode worker boundary and runtime capability checks.</p>
+          <p class="progress-indicator__stage">Starting up</p>
+          <p class="progress-indicator__title">Loading…</p>
         </div>
       </div>
     </section>
@@ -515,35 +510,34 @@ function renderInputSelectionSection(state: AppState): string {
       <div class="section-heading">
         <div>
           <div class="section-heading__title">
-            <h2>Desktop review workspace</h2>
+            <h2>Review area</h2>
             ${renderTooltip(
               'review-workspace-help',
-              'What appears in the review workspace',
-              'The results area becomes the default review surface after conversion, showing summary metrics, warnings, and exported items inline.',
+              'What appears here',
+              'The results area shows a summary, any warnings, and your exported records after conversion is complete.',
             )}
           </div>
           <p class="instruction section-subcopy">
-            Convert a ZIP above to populate this desk-scale review surface with exported items, DOI links, and PDF status indicators.
+            Convert a ZIP above to see your exported records here, including DOI links and PDF attachment status.
           </p>
         </div>
         <div class="chip-row">
           <span class="soft-chip">Inline review</span>
-          <span class="soft-chip">No modal required</span>
         </div>
       </div>
       <div class="workspace-empty-state">
         <div class="workspace-empty-state__card">
           <p class="workspace-empty-state__eyebrow">What lands here</p>
-          <h3>Summary metrics, warnings, and exported records</h3>
+          <h3>Summary, warnings, and exported records</h3>
           <p>
-            After conversion, this area shows the library summary, warning context, and the exported-item table without interrupting the desktop workflow.
+            After conversion, this area shows the library summary, any warnings, and the full list of exported records.
           </p>
         </div>
         <div class="workspace-empty-state__card">
           <p class="workspace-empty-state__eyebrow">Why it matters</p>
           <h3>Check results before import</h3>
           <p>
-            Review title, author, journal, year, DOI behaviour, and verified PDF status inline before downloading the XML for Zotero.
+            Check titles, authors, journals, years, DOI links, and PDF attachment status before downloading the XML.
           </p>
         </div>
       </div>
@@ -557,7 +551,7 @@ function renderProgressSection(state: AppState): string {
       <div class="section-heading section-heading--tight">
         <div>
           <div class="section-heading__title">
-            <h2>Review workspace is waiting on conversion</h2>
+            <h2>Converting…</h2>
             <span class="soft-chip">Stage · ${escapeHtml(WORKFLOW_STAGE_LABELS[state.workflowStage])}</span>
           </div>
           <p class="instruction section-subcopy">${escapeHtml(state.statusMessage)}</p>
@@ -566,8 +560,8 @@ function renderProgressSection(state: AppState): string {
       <div class="progress-indicator">
         <div class="spinner" aria-hidden="true"></div>
         <div class="progress-indicator__copy">
-          <p class="progress-indicator__stage">Worker-backed conversion</p>
-          <p class="progress-indicator__title">Processing <strong>${escapeHtml(state.selectedInputLabel || 'selected input')}</strong> and generating Zotero-compatible XML.</p>
+          <p class="progress-indicator__stage">In progress</p>
+          <p class="progress-indicator__title">Processing <strong>${escapeHtml(state.selectedInputLabel || 'selected input')}</strong> — generating Zotero XML.</p>
         </div>
       </div>
     </section>
@@ -647,7 +641,7 @@ function renderResultSection(state: AppState): string {
               <p class="eyebrow review-workspace__eyebrow">Exported items</p>
               <h3>${escapeHtml(libraryDisplayName)}</h3>
               <p class="instruction review-workspace__copy">
-                Review title, author, publication context, DOI metadata, and verified PDF status before importing the XML. At larger zoom or text sizes, the action rail shifts above the table and the scrollable table keeps the headers in view.
+                Check your exported records before downloading the XML. The table scrolls if needed.
               </p>
             </div>
             <div class="modal__meta-row">
@@ -660,12 +654,12 @@ function renderResultSection(state: AppState): string {
             </div>
           </div>
           ${items.length >= 24
-            ? `<p id="review-workspace-scale-note" class="review-workspace__scale-note">Large review set detected. The inline workspace keeps download actions adjacent to a capped, scrollable table so you can stay in the same review context at higher zoom.</p>`
+            ? `<p id="review-workspace-scale-note" class="review-workspace__scale-note">Large library — the table scrolls so you can review all records before downloading.</p>`
             : ''}
           <div class="review-workspace__table-wrap ${items.length >= 24 ? 'review-workspace__table-wrap--dense' : ''}">
             <table class="items-table items-table--inline" aria-describedby="review-workspace-description${items.length >= 24 ? ' review-workspace-scale-note' : ''}">
               <caption class="items-table__caption">
-                Inline desktop review workspace for exported items from ${escapeHtml(libraryDisplayName)}.
+                Exported items from ${escapeHtml(libraryDisplayName)}.
               </caption>
               <thead>
                 <tr>
@@ -708,7 +702,7 @@ function renderResultSection(state: AppState): string {
             </table>
           </div>
           <p id="review-workspace-description" class="review-workspace__description">
-            The table stays inline so you can cross-check exported metadata and attachment status before downloading the XML, including when larger text or browser zoom reduces the available width.
+            Review exported records, attachment status, and DOI links before downloading the XML.
           </p>
         </div>
       </div>
@@ -722,7 +716,7 @@ function renderErrorSection(state: AppState): string {
       <div class="section-heading section-heading--tight">
         <div>
           <div class="section-heading__title">
-            <h2 id="recovery-title" tabindex="-1">Recovery required</h2>
+            <h2 id="recovery-title" tabindex="-1">Something went wrong</h2>
             <span class="status-chip status-chip--${escapeHtml(state.statusSeverity)}">${escapeHtml(SEVERITY_LABELS[state.statusSeverity])}</span>
           </div>
           <p class="instruction section-subcopy">${escapeHtml(state.statusMessage)}</p>
@@ -736,7 +730,7 @@ function renderErrorSection(state: AppState): string {
         : ''
       }
       <button id="retry-button" class="button button--primary" type="button">
-        Reset to supported baseline
+        Start over
       </button>
     </section>
   `;
@@ -829,7 +823,7 @@ function renderStatusDetails(state: AppState): string {
   if (state.workerStatus === 'error') {
     return `
       <details class="disclosure disclosure--hero">
-        <summary>Troubleshooting browser support</summary>
+        <summary>Troubleshooting</summary>
         <div class="disclosure__content">
           <p>
             This workspace requires a served page and dedicated worker support. Open the app through the Vite dev or preview server instead of <code>file://</code>.
@@ -844,13 +838,13 @@ function renderStatusDetails(state: AppState): string {
 
   return `
     <details class="disclosure disclosure--hero">
-      <summary>What browser-local mode includes</summary>
+      <summary>How this app works</summary>
       <div class="disclosure__content">
         <p>
-          ZIP upload is the stable baseline path. Directory intake is optional and appears only when the browser exposes secure-context picker APIs.
+          ZIP upload is the main method. Folder upload is available in some browsers as an optional alternative.
         </p>
         <p>
-          The worker keeps heavy processing off the main thread while the UI remains responsive during conversion.
+          Processing runs in the background to keep the interface responsive during conversion.
         </p>
       </div>
     </details>
@@ -878,15 +872,15 @@ function renderCapabilitySupportCard(state: AppState): string {
   const directoryUnavailable = !state.runtime.directoryIntake.available;
   const severity = degradedBySecureContext ? 'warning' : 'informational';
   const title = degradedBySecureContext
-    ? 'Secure-context enhancements are limited'
+    ? 'Limited browser capability'
     : directoryUnavailable
-      ? 'ZIP-first capability baseline'
-      : 'Optional folder intake is available';
+      ? 'Using ZIP upload'
+      : 'Folder upload available';
   const message = degradedBySecureContext
-    ? 'This browser session is not fully secure, so capability-gated enhancements may stay disabled. ZIP upload remains the safe, supported baseline.'
+    ? 'This browser session has limited secure-context feature support. ZIP upload remains available.'
     : directoryUnavailable
-      ? 'Direct-folder intake is unavailable in this browser context, so the supported workflow stays ZIP-first without implying hidden fallback behaviour.'
-      : 'This session exposes the folder picker as a secondary enhancement, while ZIP upload remains the primary and most portable browser-local path.';
+      ? 'Folder upload is not available in this browser. Use ZIP upload to proceed.'
+      : 'Folder upload is available as an optional alternative to ZIP upload.';
   const guidanceItems = state.runtime.notes.length > 0
     ? state.runtime.notes.map((note, index) => ({
         detail: note,
@@ -922,6 +916,6 @@ function buildWorkerTooltip(state: AppState): string {
   }
 
   return state.runtime.directoryIntake.available
-    ? 'ZIP upload is the initially prefered method; a folder picker will be visible as a secondary option when the browser supports it.'
-    : 'ZIP upload is supported on this browser.'
+    ? 'Upload a ZIP file to get started. A folder picker is also available in this browser.'
+    : 'Upload a ZIP file to convert your EndNote library.'
 }

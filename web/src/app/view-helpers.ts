@@ -20,47 +20,47 @@ export interface WarningSummary {
 
 const SEVERITY_PRESENTATION: Record<StatusSeverity, SeverityPresentation> = {
   error: {
-    description: 'Action required. The current session cannot continue until the blocking browser or input problem is resolved.',
+    description: 'Something went wrong. Resolve the issue before continuing.',
     label: 'Action required',
   },
   informational: {
-    description: 'Support note. The browser-local baseline is available and the current step does not need intervention.',
-    label: 'Support note',
+    description: 'No action needed at this step.',
+    label: 'Info',
   },
   success: {
-    description: 'Ready. The export completed without degraded metadata and can move straight to download.',
+    description: "Conversion complete. Download the XML when you're ready.",
     label: 'Ready',
   },
   warning: {
-    description: 'Review required. Conversion completed or continued, but the result should be checked before import.',
+    description: 'Conversion completed with warnings. Check the results before importing into Zotero.',
     label: 'Review required',
   },
 };
 
 const WARNING_SUMMARY_COPY: Record<ExportWarningCode, Omit<WarningSummary, 'code' | 'count' | 'messages'>> = {
   ATTACHMENT_LINKS_OMITTED: {
-    guidance: 'Add a library location only if you want XML items to include local PDF links; metadata-only export is expected in browser-local mode.',
-    summary: 'Attachment metadata was preserved, but browser-local export intentionally omitted local PDF links.',
-    title: 'PDF links were omitted',
+    guidance: 'This is expected — add a library location in the options only if you need PDF links in the exported XML.',
+    summary: 'Attachment metadata was preserved, but local PDF links were not included in the export.',
+    title: 'PDF links were not included',
   },
   ATTACHMENT_LINKS_PARTIAL: {
-    guidance: 'Compare attachment counts before import and re-run with a validated library path if partial PDF linking is not acceptable.',
-    summary: 'Some verified PDF links were emitted, but at least one attachment could not be linked completely.',
+    guidance: 'Check the attachment counts and re-run with the correct library path if you need all PDF links included.',
+    summary: 'Some PDF links were exported, but at least one attachment could not be fully linked.',
     title: 'PDF link coverage is partial',
   },
   ATTACHMENT_PAYLOAD_MISSING: {
-    guidance: 'Rebuild or re-export the source library package if those attachments should have been included in the selected input.',
-    summary: 'Attachment metadata exists for at least one record, but the selected browser input did not include the payload file.',
-    title: 'Attachment payloads were missing',
+    guidance: 'Re-export the library package if the missing attachments should have been included in the ZIP.',
+    summary: 'One or more attachment files were expected but missing from the uploaded ZIP.',
+    title: 'Attachment files were missing',
   },
   INVALID_TIMESTAMP: {
-    guidance: 'Spot-check imported notes or timestamps in Zotero if exact created or modified dates are important for this library.',
-    summary: 'At least one EndNote timestamp could not be preserved exactly and may require manual review.',
+    guidance: 'Check dates in Zotero after import if exact timestamps matter for this library.',
+    summary: 'At least one EndNote timestamp could not be preserved exactly and may need manual review.',
     title: 'Some timestamps could not be preserved exactly',
   },
   RECORD_SKIPPED: {
-    guidance: 'Review the skipped-record details before import and consider re-running with a cleaner archive if record loss is unacceptable.',
-    summary: 'One or more records could not be converted into Zotero XML and were skipped from the export.',
+    guidance: 'Review skipped records below and re-export from EndNote if any data loss is unacceptable.',
+    summary: 'One or more records could not be converted into Zotero XML and were skipped.',
     title: 'Some records were skipped',
   },
 };

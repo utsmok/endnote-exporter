@@ -64,8 +64,8 @@ export interface AppState {
 
 export function createInitialState(runtime: BrowserRuntimeInfo): AppState {
   const statusMessage = runtime.isServedMode
-    ? 'Bootstrapping the worker-backed served-mode workspace.'
-    : 'Served mode is required; file:// launch is intentionally unsupported.';
+    ? 'Getting ready…'
+    : 'This app must be served through a local server — it cannot be opened directly as a file.';
 
   return {
     attachmentBasePath: '',
