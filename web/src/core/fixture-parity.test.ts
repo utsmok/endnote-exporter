@@ -1,29 +1,19 @@
-import { readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { describe, expect, it } from 'vitest';
-import { XMLParser, XMLValidator } from 'fast-xml-parser';
 
-import { normalizeZipLibrary } from './normalize-library';
-import { convertLibrary } from './convert-library';
-import { createSqliteAdapter } from '../worker/sqlite-adapter';
-import { queryPreparedLibrary } from '../worker/query-endnote';
-import type { ExportResult } from '../types/export-result';
+import {
+  canonicalizeXml,
+  convertZipLibrary,
+  countXmlRecords,
+  endnoteExampleLibraryZip,
+  expectValidXml,
+  materializePdfRootPlaceholder,
+  readGoldenFile,
+  realSampleExpectations,
+  stripPdfUrls,
+  testingDir,
+} from '../test/repo-fixtures';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const repoRoot = join(__dirname, '..', '..', '..');
-const fixturesDir = join(repoRoot, 'testing', 'browser-local', 'fixtures');
-const goldenDir = join(repoRoot, 'testing', 'browser-local', 'golden');
-
-const parser = new XMLParser({
-  attributeNamePrefix: '@_',
-  ignoreAttributes: false,
-  parseAttributeValue: false,
-  parseTagValue: false,
-  trimValues: false,
-});
+const fixturesDir = `${testingDir}/browser-local/fixtures`;
 
 const exactParityFixtures = [
   {
@@ -44,8 +34,8 @@ describe('fixture-backed browser-local parity', () => {
   it.each(exactParityFixtures)(
     'matches approved XML for $archiveFileName',
     async ({ archiveFileName, goldenFileName }) => {
-      const result = await convertFixture(archiveFileName);
-      const goldenXml = await readText(join(goldenDir, goldenFileName));
+      const { result } = await convertZipLibrary(`${fixturesDir}/${archiveFileName}`);
+      const goldenXml = await readGoldenFile(goldenFileName);
 
       expectValidXml(result.xml);
       expect(canonicalizeXml(result.xml)).toEqual(canonicalizeXml(goldenXml));
@@ -58,8 +48,8 @@ describe('fixture-backed browser-local parity', () => {
   );
 
   it('matches approved divergence for attachment-present', async () => {
-    const result = await convertFixture('attachment-present.zip');
-    const goldenXml = await readText(join(goldenDir, 'attachment-present.xml'));
+    const { result } = await convertZipLibrary(`${fixturesDir}/attachment-present.zip`);
+    const goldenXml = await readGoldenFile('attachment-present.xml');
 
     expectValidXml(result.xml);
     expect(result.xml).not.toContain('<pdf-urls>');
@@ -76,83 +66,57 @@ describe('fixture-backed browser-local parity', () => {
       expect.objectContaining({ code: 'ATTACHMENT_LINKS_OMITTED' }),
     );
   });
+
+  it('matches the checked-in real-sample golden for the zip path while omitting unresolved PDF links', async () => {
+    const { library, result } = await convertZipLibrary(endnoteExampleLibraryZip, {
+      baseLibraryPath: '/virtual/grietha.enl',
+    });
+    const goldenXml = await readGoldenFile('endnote-example-library.xml');
+
+    expect(library.attachments.files).toEqual([]);
+    expectValidXml(result.xml);
+    expect(result.xml).not.toContain('<pdf-urls>');
+    expect(canonicalizeXml(result.xml)).toEqual(canonicalizeXml(goldenXml));
+    expect(countXmlRecords(result.xml)).toBe(realSampleExpectations.exportedRecordCount);
+    expect(result.metadata.inputRecordCount).toBe(realSampleExpectations.inputRecordCount);
+    expect(result.metadata.recordCount).toBe(realSampleExpectations.exportedRecordCount);
+    expect(result.metadata.attachmentCount).toBe(realSampleExpectations.attachmentCount);
+    expect(result.metadata.referenceCountWithAttachments).toBe(
+      realSampleExpectations.referenceCountWithAttachments,
+    );
+    expect(result.metadata.missingAttachmentPayloadCount).toBe(
+      realSampleExpectations.missingAttachmentPayloadCount,
+    );
+    expect(result.metadata.linkedAttachmentCount).toBe(0);
+    expect(result.metadata.attachmentMode).toBe('base-library-path-links');
+    expect(result.metadata.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'ATTACHMENT_LINKS_OMITTED' }),
+        expect.objectContaining({ code: 'ATTACHMENT_PAYLOAD_MISSING' }),
+      ]),
+    );
+  });
+
+  it('emits verified PDF file paths when a payload-backed fixture is converted with a library base path', async () => {
+    const baseLibraryPath = '/virtual/AttachmentLibrary.enl';
+    const { result } = await convertZipLibrary(`${fixturesDir}/attachment-present.zip`, {
+      baseLibraryPath,
+    });
+    const goldenXml = await readGoldenFile('attachment-present.xml');
+
+    expectValidXml(result.xml);
+    expect(canonicalizeXml(result.xml)).toEqual(
+      canonicalizeXml(
+        materializePdfRootPlaceholder(
+          goldenXml,
+          '/virtual/AttachmentLibrary.Data/PDF',
+        ),
+      ),
+    );
+    expect(result.xml).toContain('<pdf-urls>');
+    expect(result.metadata.attachmentMode).toBe('base-library-path-links');
+    expect(result.metadata.linkedAttachmentCount).toBe(1);
+    expect(result.metadata.missingAttachmentPayloadCount).toBe(0);
+    expect(result.metadata.warnings).toEqual([]);
+  });
 });
-
-async function convertFixture(archiveFileName: string): Promise<ExportResult> {
-  const archiveBytes = await readFixtureBytes(archiveFileName);
-  const library = normalizeZipLibrary({
-    archiveBytes,
-    archiveFileName,
-  });
-  const adapter = await createSqliteAdapter({
-    databaseBytes: library.database.bytes,
-    databaseLabel: library.displayName,
-  });
-
-  try {
-    const queryResult = queryPreparedLibrary(adapter, library);
-    return convertLibrary(queryResult, library);
-  } finally {
-    adapter.close();
-  }
-}
-
-async function readFixtureBytes(fileName: string): Promise<Uint8Array> {
-  const buffer = await readFile(join(fixturesDir, fileName));
-  return new Uint8Array(buffer);
-}
-
-async function readText(filePath: string): Promise<string> {
-  return readFile(filePath, 'utf8');
-}
-
-function expectValidXml(xml: string): void {
-  const validation = XMLValidator.validate(xml);
-  expect(validation).toBe(true);
-}
-
-function canonicalizeXml(xml: string): unknown {
-  return canonicalizeValue(parser.parse(xml));
-}
-
-function canonicalizeValue(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map((entry) => canonicalizeValue(entry));
-  }
-
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(([key]) => key !== '?xml')
-        .filter(([key, entryValue]) => key !== '#text' || String(entryValue).trim().length > 0)
-        .map(([key, entryValue]) => [
-          key,
-          key === '#text'
-            ? String(entryValue).replace(/\r\n/g, '\n')
-            : canonicalizeValue(entryValue),
-        ]),
-    );
-  }
-
-  if (typeof value === 'string') {
-    return value.replace(/\r\n/g, '\n');
-  }
-
-  return value;
-}
-
-function stripPdfUrls(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map((entry) => stripPdfUrls(entry));
-  }
-
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>)
-        .filter(([key]) => key !== 'pdf-urls')
-        .map(([key, entryValue]) => [key, stripPdfUrls(entryValue)]),
-    );
-  }
-
-  return value;
-}
