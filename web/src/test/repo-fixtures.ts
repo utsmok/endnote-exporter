@@ -161,9 +161,15 @@ function canonicalizeValue(value: unknown): unknown {
       .filter(([key]) => key !== '?xml')
       .filter(([key, entryValue]) => key !== '#text' || String(entryValue).trim().length > 0)
       .map(([key, entryValue]) => {
-        const canonicalized = key === '#text'
-          ? normalizeXmlString(String(entryValue))
-          : canonicalizeValue(entryValue);
+        let canonicalized: unknown;
+
+        if (key === '#text') {
+          canonicalized = normalizeXmlString(String(entryValue));
+        } else if (key === 'notes') {
+          canonicalized = normalizeTimestampsInNotes(canonicalizeValue(entryValue));
+        } else {
+          canonicalized = canonicalizeValue(entryValue);
+        }
 
         if (key === 'keyword' && typeof canonicalized === 'string') {
           const keywords = canonicalized
@@ -200,6 +206,22 @@ function normalizeXmlString(value: string): string {
     .replace(/\r\n/g, '\n');
 
   return normalized.trim().length === 0 ? '' : normalized;
+}
+
+const timestampPattern = /\b(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})\b/gu;
+
+/**
+ * Normalizes timestamps in notes fields to UTC for timezone-agnostic comparison.
+ * The formatTimestamp function uses local time, so CI (UTC) produces different
+ * output than local development (e.g., UTC+2). We normalize to date-only to
+ * avoid timezone flakiness in parity tests.
+ */
+function normalizeTimestampsInNotes(value: unknown): unknown {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  return value.replace(timestampPattern, '$1T00:00:00');
 }
 
 function isEmptyObject(value: unknown): boolean {
