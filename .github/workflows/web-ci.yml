@@ -1,0 +1,101 @@
+name: Web CI
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-quality:
+    name: Web quality gates
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Run fixture-backed unit and integration tests
+        run: npm run test
+
+      - name: Type-check the browser workspace
+        run: npm run typecheck
+
+      - name: Build the served browser workspace
+        run: npm run build
+
+  chromium-browser-smoke:
+    name: Chromium browser smoke
+    runs-on: ubuntu-latest
+    needs:
+      - web-quality
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run required Chromium smoke coverage
+        run: CI=true npm run test:e2e -- --project=chromium
+
+  browser-matrix-best-effort:
+    name: Browser matrix best-effort (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    needs:
+      - web-quality
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        browser:
+          - firefox
+          - webkit
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Install ${{ matrix.browser }} for Playwright
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run best-effort support-matrix validation
+        run: CI=true npm run test:matrix -- --project=${{ matrix.browser }}
