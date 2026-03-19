@@ -270,6 +270,49 @@ h3 {
   font-weight: 700;
 }
 
+.dropzone__help-details {
+  margin-top: 0.75rem;
+}
+
+.dropzone__help-toggle {
+  cursor: pointer;
+  color: var(--info);
+  font-size: 0.85rem;
+  font-weight: 600;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dropzone__help-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.dropzone__help-toggle::before {
+  content: '›';
+  font-size: 1.1rem;
+  transition: transform 150ms ease-in-out;
+}
+
+.dropzone__help-details[open] .dropzone__help-toggle::before {
+  transform: rotate(90deg);
+}
+
+.dropzone__help-image {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+}
+
+.dropzone__help-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
 .library-location-container,
 .loading-state,
 .results-header,

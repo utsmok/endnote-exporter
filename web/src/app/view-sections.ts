@@ -76,7 +76,7 @@ function renderLoadingSection({
     <section class="main-section" aria-labelledby="${escapeHtml(id)}">
       ${renderPageHeader({
         title: 'Convert EndNote Library to XML',
-        copy: 'Convert an EndNote library ZIP into Zotero-compatible XML directly in your browser.',
+        copy: '',
         headingId: id,
         kicker: 'Browser-local conversion',
       })}
@@ -105,7 +105,7 @@ function renderInputSelectionPanel(state: AppState): string {
     <section class="main-section" aria-labelledby="primary-task-title">
       ${renderPageHeader({
         title: 'Convert EndNote Library to XML',
-        copy: 'Upload your library ZIP, add the original library location for PDF links, and create Zotero XML when everything looks right.',
+        copy: '',
         headingId: 'primary-task-title',
         kicker: 'Browser-local conversion',
       })}
@@ -127,7 +127,17 @@ function renderInputSelectionPanel(state: AppState): string {
         <span class="dropzone__copy">${fileSummary}</span>
         <span class="dropzone__cta">Choose ZIP</span>
         <span class="dropzone__help" id="zip-dropzone-help">
-          ZIPs should contain the <code>.enl</code> library file with its matching <code>.Data</code> folder, or packaged <code>.enlp</code> contents.
+          ZIP should contain:
+          <ul>
+           <li>the <code>.enl</code> library file with its matching <code>.Data</code> folder, OR:</li>
+           <li>a single <code>.enlp</code> package (often used by MacOS).</li>
+          </ul>
+          <details class="dropzone__help-details">
+            <summary class="dropzone__help-toggle">How to create the ZIP file on Windows</summary>
+            <div class="dropzone__help-image">
+              <img src="${import.meta.env.BASE_URL}create_zip_windows.png" alt="Instructions for creating a ZIP file from an EndNote library on Windows: Right-click the .enl file and .Data folder, select 'Send to > Compressed (zipped) folder'" />
+            </div>
+          </details>
         </span>
         ${dropzoneState === 'invalid'
           ? `<span class="dropzone__error" id="zip-dropzone-error" role="alert">${escapeHtml(state.statusMessage)}</span>`
@@ -182,14 +192,14 @@ function renderInputSelectionPanel(state: AppState): string {
         </button>
       </div>
       <p class="submit-help" id="submit-help" style="display: ${canCreateXml ? 'none' : 'block'};">
-        Create XML becomes available after a ZIP is queued and the library location is provided.
+        Select a .zip & provide the location to enable the button & proceed.
       </p>
       ${state.runtime.directoryIntake.available
         ? `
           <div class="directory-picker-row">
-            <p>Prefer folder access in this browser?</p>
+            <p>Instead of a .zip file, you can also move the .enl file and the .Data folder to a new folder on your computer, and select it here.</p>
             <button id="directory-picker-button" class="button button--secondary" type="button">
-              Choose library folder instead
+              Use folder instead of .zip
             </button>
           </div>
         `
@@ -243,7 +253,7 @@ function renderResultSection(state: AppState): string {
     <section class="main-section" aria-labelledby="review-workspace-title">
       ${renderPageHeader({
         title: 'Convert EndNote Library to XML',
-        copy: 'Review the exported records and download the XML when you are ready to import it into Zotero.',
+        copy: '',
         headingId: 'page-title',
         kicker: 'Browser-local conversion',
       })}
@@ -331,7 +341,7 @@ function renderErrorSection(state: AppState): string {
       ${renderPageHeader({
         centered: true,
         title: 'Convert EndNote Library to XML',
-        copy: 'Review the issue below, then start over when you are ready.',
+        copy: '',
         headingId: 'page-title',
         kicker: 'Browser-local conversion',
       })}
