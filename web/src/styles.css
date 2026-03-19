@@ -123,7 +123,7 @@ p {
 .shell {
   width: min(1480px, calc(100% - 3rem));
   margin: 0 auto;
-  padding: 2.5rem 0 5rem;
+  padding: 1.5rem 0 3rem;
 }
 
 .shell__main {
@@ -152,7 +152,7 @@ p {
   background: var(--bg-surface);
   border: 1px solid var(--border-strong);
   border-radius: 0;
-  padding: 2.25rem;
+  padding: 1.5rem;
 }
 
 .hero {
@@ -161,8 +161,7 @@ p {
 
 .hero__layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(360px, 0.95fr);
-  gap: 2.5rem;
+  gap: 1.25rem;
   align-items: start;
 }
 
@@ -179,24 +178,24 @@ h3 {
 
 h1 {
   color: var(--cc-dark-slate-blue);
-  font-size: clamp(2.75rem, 4.5vw, 4.5rem);
-  line-height: 1.02;
-  margin-bottom: 1rem;
+  font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+  line-height: 1.1;
+  margin-bottom: 0.5rem;
   text-wrap: balance;
 }
 
 h2 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-h3 {
-  font-size: 1.3rem;
+  font-size: 1.35rem;
   margin-bottom: 0.35rem;
 }
 
+h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+}
+
 .lede {
-  font-size: 1.25rem;
+  font-size: 1rem;
   margin-bottom: 0;
   max-width: 62ch;
   text-wrap: pretty;
@@ -219,15 +218,15 @@ h3 {
 }
 
 .status-panel {
-  margin-top: 2rem;
+  margin-top: 1rem;
 }
 
 .status-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 1.25rem;
-  padding: 1.25rem 1.5rem;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
   border: 1px solid var(--border-strong);
   background: var(--bg-soft);
 }
@@ -239,7 +238,7 @@ h3 {
 
 .status-row__title {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1rem;
   font-weight: 700;
 }
 
@@ -289,11 +288,16 @@ h3 {
 .task-card {
   background: var(--bg-soft);
   border: 1px solid var(--border-strong);
-  min-height: 100%;
+  padding: 1.25rem;
+  margin-top: 1rem;
+}
+
+.task-card__header {
+  padding: 0.5rem 0;
 }
 
 .task-card__state {
-  padding: 1.25rem;
+  padding: 1rem;
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
 }
@@ -328,12 +332,12 @@ h3 {
 
 .file-input-label {
   display: grid;
-  gap: 0.9rem;
-  padding: 2.5rem;
+  gap: 0.65rem;
+  padding: 1.25rem;
   background: var(--bg-surface);
   border: 2px dashed var(--cc-dark-slate-blue);
   cursor: pointer;
-  min-height: 18rem;
+  min-height: 12rem;
   align-content: center;
 }
 
@@ -345,7 +349,7 @@ h3 {
 
 .file-input-kicker {
   color: var(--cc-dark-slate-blue);
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -358,16 +362,16 @@ h3 {
   width: fit-content;
   background: var(--accent);
   color: #ffffff;
-  padding: 1rem 1.4rem;
+  padding: 0.65rem 1rem;
   border-radius: 0;
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .file-input-text {
-  font-size: 1.15rem;
+  font-size: 0.95rem;
   font-weight: 600;
 }
 
@@ -377,11 +381,11 @@ h3 {
 }
 
 .field-group {
-  margin-top: 1.5rem;
+  margin-top: 1rem;
 }
 
 .field-group--subdued {
-  padding: 1.25rem 1.5rem;
+  padding: 0.85rem 1rem;
   background: var(--bg-soft);
   border: 1px solid var(--border-subtle);
 }
@@ -398,8 +402,8 @@ h3 {
   border-radius: 0;
   background: var(--bg-surface);
   color: var(--text-primary);
-  padding: 0.95rem 1rem;
-  font-size: 1rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
 }
 
 .text-input:focus-visible,
@@ -413,13 +417,13 @@ h3 {
 .button {
   border: 1px solid transparent;
   border-radius: 0;
-  padding: 1rem 1.4rem;
+  padding: 0.65rem 1rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  font-size: 1rem;
+  gap: 0.5rem;
+  font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -489,21 +493,21 @@ h3 {
 
 .review-workspace__top {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 1rem;
   align-items: start;
 }
 
 .success-summary {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  padding: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  padding: 1rem;
   border: 1px solid var(--border-strong);
   background: var(--bg-soft);
 }
 
 .success-summary p {
   margin: 0;
-  padding: 1rem;
+  padding: 0.65rem;
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
 }
@@ -540,7 +544,7 @@ h3 {
 }
 
 .warnings {
-  padding: 1.5rem;
+  padding: 1rem;
   border: 1px solid var(--warning);
   background: #fff8db;
 }
@@ -554,7 +558,7 @@ h3 {
 }
 
 .warning-summary {
-  padding: 1rem 1.25rem;
+  padding: 0.75rem 1rem;
   border: 1px solid #d4bc58;
   background: #fffdf4;
 }
@@ -607,9 +611,9 @@ h3 {
 .review-workspace__table-header {
   display: flex;
   justify-content: space-between;
-  gap: 1.25rem;
+  gap: 1rem;
   align-items: flex-start;
-  padding: 1.5rem 1.5rem 0;
+  padding: 1rem 1rem 0;
 }
 
 .review-workspace__table-wrap {
@@ -621,7 +625,7 @@ h3 {
 }
 
 .review-workspace__description {
-  margin: 1rem 1.5rem 0;
+  margin: 0.65rem 1rem 0;
 }
 
 .items-table {
@@ -632,7 +636,7 @@ h3 {
 
 .items-table__caption {
   text-align: left;
-  padding: 0.9rem 1rem;
+  padding: 0.5rem 0.75rem;
   color: var(--text-muted);
 }
 
@@ -640,16 +644,16 @@ h3 {
   background: var(--cc-dark-slate-blue);
   color: #ffffff;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  padding: 1rem;
+  padding: 0.65rem 0.75rem;
   border-bottom: 1px solid var(--border-strong);
   text-align: left;
 }
 
 .items-table td {
-  padding: 1rem;
+  padding: 0.65rem 0.75rem;
   border-bottom: 1px solid var(--border-subtle);
   vertical-align: top;
 }
@@ -734,8 +738,8 @@ h3 {
 }
 
 .alternate-intake {
-  margin-top: 1rem;
-  padding: 1.25rem 1.5rem;
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
   border: 1px solid var(--border-subtle);
   background: var(--bg-soft);
 }
@@ -776,7 +780,7 @@ h3 {
 @media (max-width: 640px) {
   .shell {
     width: min(100% - 1.5rem, 1480px);
-    padding-top: 1.5rem;
+    padding-top: 1rem;
   }
 
   .card,
@@ -784,12 +788,12 @@ h3 {
   .task-card,
   .success-summary,
   .warnings {
-    padding: 1.5rem;
+    padding: 1rem;
   }
 
   .file-input-label {
-    padding: 1.5rem;
-    min-height: 15rem;
+    padding: 1rem;
+    min-height: 10rem;
   }
 
   .success-summary {
@@ -797,7 +801,7 @@ h3 {
   }
 
   h1 {
-    font-size: 2.25rem;
+    font-size: 1.5rem;
   }
 }
 

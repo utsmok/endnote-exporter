@@ -39,30 +39,28 @@ function renderHeroSection(state: AppState): string {
   return `
     <section class="hero card">
       <div class="hero__layout">
-        <div class="hero__copy">
-          <h1>Convert EndNote Library to XML</h1>
-          <p class="lede">
-            Convert your EndNote library to Zotero XML in your browser. Upload a library ZIP,
-            review the exported records, then download the XML for import into Zotero.
-          </p>
-          <div class="status-panel">
-            <div class="status-row" role="region" aria-labelledby="current-status-title" aria-describedby="current-status-message current-status-severity">
-              <div class="status-row__copy">
-                <span class="status-chip status-chip--${escapeHtml(state.statusSeverity)}" id="current-status-severity">
-                  ${escapeHtml(SEVERITY_LABELS[state.statusSeverity])}
-                </span>
-                <p class="status-row__title" id="current-status-title">${escapeHtml(state.statusTitle)}</p>
-                <p class="status-text" id="current-status-message">${escapeHtml(state.statusMessage)}</p>
-              </div>
+        <h1>Convert EndNote Library to XML</h1>
+        <p class="lede">
+          Convert your EndNote library to Zotero XML in your browser. Upload a library ZIP,
+          review the exported records, then download the XML for import into Zotero.
+        </p>
+        <div class="status-panel">
+          <div class="status-row" role="region" aria-labelledby="current-status-title" aria-describedby="current-status-message current-status-severity">
+            <div class="status-row__copy">
+              <span class="status-chip status-chip--${escapeHtml(state.statusSeverity)}" id="current-status-severity">
+                ${escapeHtml(SEVERITY_LABELS[state.statusSeverity])}
+              </span>
+              <p class="status-row__title" id="current-status-title">${escapeHtml(state.statusTitle)}</p>
+              <p class="status-text" id="current-status-message">${escapeHtml(state.statusMessage)}</p>
             </div>
-            <p class="support-note">${escapeHtml(buildSupportNote(state))}</p>
-            ${state.recoveryGuidance.length > 0 ? renderRecoveryGuidance(state) : ''}
           </div>
+          <p class="support-note">${escapeHtml(buildSupportNote(state))}</p>
+          ${state.recoveryGuidance.length > 0 ? renderRecoveryGuidance(state) : ''}
         </div>
-        <aside class="task-card">
-          ${renderPrimaryTaskPanel(state)}
-        </aside>
       </div>
+    </section>
+    <section class="task-card card">
+      ${renderPrimaryTaskPanel(state)}
     </section>
   `;
 }
