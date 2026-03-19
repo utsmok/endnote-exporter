@@ -2,8 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createController,
-  syncSessionStateMarker,
-  takeSessionNotice,
 } from './controller';
 import {
   createInitialState,
@@ -12,7 +10,9 @@ import {
   type AppState,
 } from './state';
 import type { BrowserRuntimeInfo } from '../adapters/browser-runtime';
+import type { PreparedLibrary } from '../core/library-types';
 import type { ExportResult } from '../types/export-result';
+import type { ConvertPreparedLibrarySuccessResponse } from '../types/worker';
 
 function buildRuntime(): BrowserRuntimeInfo {
   return {
@@ -57,6 +57,53 @@ function buildExportResult(): ExportResult {
       skippedRecordCount: 0,
       warnings: [],
     },
+  };
+}
+
+function buildPreparedLibrary(): PreparedLibrary {
+  return {
+    attachments: {
+      files: [],
+      rootRelativePath: 'TestLibrary.Data/PDF',
+    },
+    database: {
+      archivePath: 'TestLibrary.Data/sdb/sdb.eni',
+      bytes: new ArrayBuffer(0),
+      relativePath: 'TestLibrary.Data/sdb/sdb.eni',
+    },
+    displayName: 'Test Library',
+    fileMap: {},
+    files: [],
+    id: 'test-library',
+    identity: {
+      archiveFileName: 'library.zip',
+      dataDirectoryName: 'TestLibrary.Data',
+      dataDirectoryRelativePath: 'TestLibrary.Data',
+      displayName: 'Test Library',
+      id: 'test-library',
+      libraryFileName: 'TestLibrary.enl',
+      libraryRelativePath: 'TestLibrary.enl',
+      packageRelativePath: null,
+      sourceShape: 'zipped-enl-data',
+      stem: 'TestLibrary',
+    },
+    libraryFile: {
+      archivePath: 'TestLibrary.enl',
+      relativePath: 'TestLibrary.enl',
+      size: 0,
+      source: 'zip-entry',
+    },
+    sourceKind: 'zip',
+    warnings: [],
+  };
+}
+
+function buildConvertResponse(): ConvertPreparedLibrarySuccessResponse {
+  return {
+    exportResult: buildExportResult(),
+    kind: 'convert-prepared-library',
+    ok: true,
+    requestId: 'test-request',
   };
 }
 
@@ -158,32 +205,17 @@ describe('createController', () => {
       .toBe(state.downloadErrorMessage);
   });
 
-  it('persists explicit theme preferences and updates the document theme', () => {
+  it('passes a trimmed attachment base path into ZIP conversion options', async () => {
     let state = createInitialState(buildRuntime());
-    const setItem = vi.fn();
-    const removeItem = vi.fn();
-    const documentElement = {
-      dataset: {} as Record<string, string>,
-      style: {} as Record<string, string>,
-    };
-
-    vi.stubGlobal('localStorage', {
-      getItem: vi.fn(() => null),
-      removeItem,
-      setItem,
-    });
-    vi.stubGlobal('document', {
-      documentElement,
-    });
-    vi.stubGlobal('window', {
-      matchMedia: vi.fn(() => ({ matches: false })),
-    });
+    const preparedLibrary = buildPreparedLibrary();
+    const prepareInput = vi.fn(async () => preparedLibrary);
+    const convertPreparedLibrary = vi.fn(async () => buildConvertResponse());
 
     const controller = createController({
       download: vi.fn(),
       getState: () => state,
       pickDirectory: vi.fn(),
-      prepareInput: vi.fn(),
+      prepareInput,
       root: { querySelector: () => null } as unknown as HTMLElement,
       updateState: (nextStateOrUpdater) => {
         state = typeof nextStateOrUpdater === 'function'
@@ -192,63 +224,56 @@ describe('createController', () => {
         return state;
       },
       workerClient: {
-        convertPreparedLibrary: vi.fn(),
+        convertPreparedLibrary,
         dispose: vi.fn(),
         initialise: vi.fn(),
         queryPreparedLibrary: vi.fn(),
       },
     });
 
-    controller.handleThemePreferenceChange('dark');
+    controller.handleAttachmentBasePathInput('  /Users/me/Documents/MyLibrary.enlp  ');
+    await controller.handleFileSelect({ name: 'library.zip' } as File);
 
-    expect(state.themePreference).toBe('dark');
-    expect(state.resolvedTheme).toBe('dark');
-    expect(setItem).toHaveBeenCalledWith('endnote-exporter.theme-preference', 'dark');
-    expect(documentElement.dataset.theme).toBe('dark');
-    expect(documentElement.dataset.themePreference).toBe('dark');
-    expect(documentElement.style.colorScheme).toBe('dark');
-
-    controller.handleThemePreferenceChange('system');
-
-    expect(state.themePreference).toBe('system');
-    expect(state.resolvedTheme).toBe('light');
-    expect(removeItem).toHaveBeenCalledWith('endnote-exporter.theme-preference');
-    expect(documentElement.dataset.theme).toBe('light');
-    expect(documentElement.dataset.themePreference).toBe('system');
+    expect(prepareInput).toHaveBeenCalledWith({
+      file: expect.objectContaining({ name: 'library.zip' }),
+      kind: 'zip-file',
+    });
+    expect(convertPreparedLibrary).toHaveBeenCalledWith(
+      preparedLibrary,
+      { baseLibraryPath: '/Users/me/Documents/MyLibrary.enlp' },
+    );
   });
 
-  it('stores only phase markers for private session-loss recovery', () => {
-    const storage = {
-      removeItem: vi.fn(),
-      setItem: vi.fn(),
-    };
-    const state = withExportResult(createInitialState(buildRuntime()), buildExportResult());
+  it('omits attachment options when no base path is provided', async () => {
+    let state = createInitialState(buildRuntime());
+    const preparedLibrary = buildPreparedLibrary();
+    const convertPreparedLibrary = vi.fn(async () => buildConvertResponse());
 
-    syncSessionStateMarker({
-      ...state,
-      selectedInputLabel: 'sensitive-library.zip',
-    }, storage);
+    const controller = createController({
+      download: vi.fn(),
+      getState: () => state,
+      pickDirectory: vi.fn(),
+      prepareInput: vi.fn(async () => preparedLibrary),
+      root: { querySelector: () => null } as unknown as HTMLElement,
+      updateState: (nextStateOrUpdater) => {
+        state = typeof nextStateOrUpdater === 'function'
+          ? nextStateOrUpdater(state)
+          : nextStateOrUpdater;
+        return state;
+      },
+      workerClient: {
+        convertPreparedLibrary,
+        dispose: vi.fn(),
+        initialise: vi.fn(),
+        queryPreparedLibrary: vi.fn(),
+      },
+    });
 
-    expect(storage.setItem).toHaveBeenCalledOnce();
-    const rawValue = storage.setItem.mock.calls[0]?.[1];
+    await controller.handleFileSelect({ name: 'library.zip' } as File);
 
-    expect(rawValue).toContain('conversion-complete');
-    expect(rawValue).not.toContain('sensitive-library.zip');
-  });
-
-  it('surfaces a conservative session-loss notice when in-memory review data was cleared', () => {
-    const storage = {
-      getItem: vi.fn(() => JSON.stringify({
-        phase: 'conversion-complete',
-        version: 1,
-      })),
-      removeItem: vi.fn(),
-    };
-
-    const notice = takeSessionNotice(storage);
-
-    expect(notice?.title).toBe('Previous review data was cleared');
-    expect(notice?.message).toContain('not restored after page reload');
-    expect(storage.removeItem).toHaveBeenCalled();
+    expect(convertPreparedLibrary).toHaveBeenCalledWith(
+      preparedLibrary,
+      undefined,
+    );
   });
 });

@@ -12,10 +12,6 @@ export type AppPhase =
   | 'conversion-complete'
   | 'conversion-error';
 
-export type ThemePreference = 'system' | 'light' | 'dark';
-
-export type ResolvedTheme = 'light' | 'dark';
-
 export type WorkflowStage = 'boot' | 'intake' | 'preparation' | 'conversion' | 'review' | 'recovery';
 
 export type StatusSeverity = 'informational' | 'success' | 'warning' | 'error';
@@ -23,13 +19,6 @@ export type StatusSeverity = 'informational' | 'success' | 'warning' | 'error';
 export interface RecoveryGuidance {
   detail: string;
   label: string;
-}
-
-export interface SessionNotice {
-  message: string;
-  recoveryGuidance: RecoveryGuidance[];
-  severity: StatusSeverity;
-  title: string;
 }
 
 export interface StatusDescriptor {
@@ -48,15 +37,12 @@ export interface AppState {
   notes: string[];
   phase: AppPhase;
   recoveryGuidance: RecoveryGuidance[];
-  resolvedTheme: ResolvedTheme;
   runtime: BrowserRuntimeInfo;
   selectedInputLabel?: string;
-  sessionNotice: SessionNotice | undefined;
   statusLiveMessage: string;
   statusMessage: string;
   statusSeverity: StatusSeverity;
   statusTitle: string;
-  themePreference: ThemePreference;
   workflowStage: WorkflowStage;
   workerStatus: WorkerStatus;
   exportResult?: ExportResult;
@@ -74,14 +60,11 @@ export function createInitialState(runtime: BrowserRuntimeInfo): AppState {
     notes: [...runtime.notes],
     phase: 'booting',
     recoveryGuidance: [],
-    resolvedTheme: 'dark',
     runtime,
-    sessionNotice: undefined,
     statusLiveMessage: statusMessage,
     statusMessage,
     statusSeverity: 'informational',
     statusTitle: 'Initialising workspace',
-    themePreference: 'system',
     workflowStage: 'boot',
     workerStatus: 'starting',
   };
@@ -104,25 +87,6 @@ export function withStatus(state: AppState, status: StatusDescriptor): AppState 
     statusSeverity: status.severity,
     statusTitle: status.title,
     workflowStage: status.workflowStage,
-  };
-}
-
-export function withTheme(
-  state: AppState,
-  themePreference: ThemePreference,
-  resolvedTheme: ResolvedTheme,
-): AppState {
-  return {
-    ...state,
-    resolvedTheme,
-    themePreference,
-  };
-}
-
-export function withSessionNotice(state: AppState, sessionNotice?: SessionNotice): AppState {
-  return {
-    ...state,
-    sessionNotice,
   };
 }
 
@@ -158,7 +122,6 @@ export function withExportResult(state: AppState, result: ExportResult): AppStat
     exportResult: result,
     isItemModalOpen: false,
     phase: 'conversion-complete',
-    sessionNotice: undefined,
   };
 }
 
@@ -168,7 +131,6 @@ export function withSelectedInput(state: AppState, label: string): AppState {
     downloadErrorMessage: undefined,
     selectedInputLabel: label,
     phase: 'converting',
-    sessionNotice: undefined,
   };
 }
 
@@ -184,6 +146,5 @@ export function clearExportResult(state: AppState): AppState {
     downloadErrorMessage: undefined,
     isItemModalOpen: false,
     phase: 'selecting-input',
-    sessionNotice: undefined,
   };
 }

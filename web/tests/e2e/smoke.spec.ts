@@ -11,36 +11,14 @@ import {
 test.describe('chromium smoke coverage', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'Required only for the supported Chromium baseline.');
 
-  test('defaults to the system theme and persists an explicit theme selection', async ({ page }) => {
-    await page.emulateMedia({ colorScheme: 'light' });
-    await gotoApp(page);
-
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-    await expect(page.locator('html')).toHaveAttribute('data-theme-preference', 'system');
-    await expect(page.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true');
-
-    await page.getByRole('button', { name: 'Dark' }).click();
-
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await expect(page.locator('html')).toHaveAttribute('data-theme-preference', 'dark');
-
-    await page.reload();
-    await expect(page.getByRole('heading', { name: 'Convert EndNote Library to XML' })).toBeVisible();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await expect(page.locator('html')).toHaveAttribute('data-theme-preference', 'dark');
-
-    await page.getByRole('button', { name: 'System' }).click();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-    await expect(page.locator('html')).toHaveAttribute('data-theme-preference', 'system');
-  });
-
-  test('shows the desktop-first intake hierarchy with workflow and trust blocks before conversion', async ({ page }) => {
+  test('shows the simplified ZIP-first intake hierarchy before conversion', async ({ page }) => {
     await gotoApp(page);
 
     await expect(page.getByRole('heading', { name: 'Start with a library ZIP' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'ZIP upload is the main method' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'PDF links are opt-in' })).toBeVisible();
-    await expect(page.getByText('Inline review')).toBeVisible();
+    await expect(page.locator('#zip-dropzone')).toContainText('Upload EndNote library ZIP');
+    await expect(page.locator('#zip-dropzone')).toContainText('Choose ZIP file');
+    await expect(page.getByLabel('Optional library location for PDF links')).toBeVisible();
+    await expect(page.getByText('After conversion, this area will show the summary, any warnings, and the exported records table.')).toBeVisible();
   });
 
   test('supports a skip link and exposes live status text for keyboard users', async ({ page }) => {
@@ -100,11 +78,13 @@ test.describe('chromium smoke coverage', () => {
     await expect(page.locator('.items-table__caption')).toContainText('Exported items from');
 
     const viewport = page.viewportSize();
-    const workspaceBox = await page.locator('.review-workspace__table-card').boundingBox();
+    const summaryBox = await page.locator('.review-workspace__top').boundingBox();
+    const tableBox = await page.locator('.review-workspace__table-card').boundingBox();
 
     expect(viewport).not.toBeNull();
-    expect(workspaceBox).not.toBeNull();
-    expect(workspaceBox?.width ?? 0).toBeGreaterThan(((viewport?.width ?? 0) * 0.45));
+    expect(summaryBox).not.toBeNull();
+    expect(tableBox).not.toBeNull();
+    expect((tableBox?.width ?? 0)).toBeGreaterThan(((summaryBox?.width ?? 0) * 0.9));
   });
 
   test('keeps the inline review workspace usable with larger text at desk-scale widths', async ({ page }) => {
@@ -118,14 +98,13 @@ test.describe('chromium smoke coverage', () => {
     await expect(page.locator('#review-workspace-description')).toContainText('Review exported records');
   });
 
-  test('surfaces a privacy-aligned session-loss notice after refresh clears in-memory review data', async ({ page }) => {
+  test('returns to the simplified intake after refresh without showing session-loss messaging', async ({ page }) => {
     await convertFixture(page, 'supported-enl-data.zip');
 
     await page.reload();
 
     await expect(page.getByRole('heading', { name: 'Start with a library ZIP' })).toBeVisible();
-    await expect(page.getByText('Previous review data was cleared')).toBeVisible();
-    await expect(page.getByText('not restored after page reload')).toBeVisible();
+    await expect(page.getByText('Previous review data was cleared')).toHaveCount(0);
   });
 
   test('broadly reduces motion when the user prefers reduced motion', async ({ page }) => {

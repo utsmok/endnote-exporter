@@ -17,15 +17,15 @@ test.describe('browser support matrix baseline', () => {
     await gotoApp(page);
 
     await expect(
-      page.getByText('Upload a ZIP that contains either an .enl library plus matching .Data folder or an .enlp package export.'),
+      page.getByText('Accepted ZIPs can contain an .enl library with its matching .Data folder or packaged .enlp contents.'),
     ).toBeVisible();
     await expect(page.getByText('Choose ZIP file')).toBeVisible();
 
     if (browserName === 'chromium') {
-      await expect(page.locator('.enhancement-eyebrow').filter({ hasText: 'Folder upload' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Choose library folder instead' })).toBeVisible();
       return;
     }
 
-    await expect(page.locator('.enhancement-eyebrow').filter({ hasText: 'Folder upload not available' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Choose library folder instead' })).toHaveCount(0);
   });
 });

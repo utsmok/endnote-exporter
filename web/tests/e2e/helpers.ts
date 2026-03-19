@@ -18,8 +18,7 @@ export async function gotoApp(page: Page): Promise<void> {
     page.getByRole('heading', { name: 'Convert EndNote Library to XML' }),
   ).toBeVisible();
   await expect(page.locator('.status-row__title')).toHaveText('Ready to convert');
-  await expect(page.getByRole('heading', { name: 'How it works' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'How your data is handled' })).toBeVisible();
+  await expect(page.getByText('Runs locally in your browser.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'System information' })).toHaveCount(0);
   await expect(page.locator('#attachment-base-path')).toBeVisible();
   await expect(page.locator('#zip-file-input')).toBeVisible();

@@ -10,47 +10,11 @@
       name="description"
       content="Browser-local EndNote to Zotero XML conversion with ZIP-first intake, worker-backed processing, and explicit support boundaries."
     />
-    <meta name="color-scheme" content="dark light" />
-    <meta name="theme-color" content="#11161d" />
-    <script>
-      (() => {
-        const storageKey = 'endnote-exporter.theme-preference';
-        const themeColors = {
-          dark: '#11161d',
-          light: '#f3eee6',
-        };
-        const root = document.documentElement;
-        const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-        const resolveSystemTheme = () => (
-          window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-        );
-
-        const applyTheme = (themePreference, resolvedTheme) => {
-          root.dataset.theme = resolvedTheme;
-          root.dataset.themePreference = themePreference;
-          root.style.colorScheme = resolvedTheme;
-          themeColorMeta?.setAttribute('content', themeColors[resolvedTheme]);
-        };
-
-        try {
-          const storedPreference = window.localStorage.getItem(storageKey);
-          const themePreference = storedPreference === 'light' || storedPreference === 'dark'
-            ? storedPreference
-            : 'system';
-          const resolvedTheme = themePreference === 'system'
-            ? resolveSystemTheme()
-            : themePreference;
-
-          applyTheme(themePreference, resolvedTheme);
-        } catch {
-          const resolvedTheme = resolveSystemTheme();
-          applyTheme('system', resolvedTheme);
-        }
-      })();
-    </script>
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#f3efe7" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700;900&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <title>EndNote Exporter — Browser-local Workspace</title>
   </head>
   <body>

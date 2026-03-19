@@ -9,8 +9,6 @@ import {
   clearExportResult,
   createInitialState,
   withStatus,
-  withSessionNotice,
-  withTheme,
   withAttachmentBasePath,
   withDownloadError,
   withExportResult,
@@ -18,9 +16,6 @@ import {
   withPhase,
   withSelectedInput,
   type AppState,
-  type ResolvedTheme,
-  type SessionNotice,
-  type ThemePreference,
 } from './state';
 import { downloadExportResult } from './download';
 import {
@@ -36,24 +31,9 @@ import {
 } from './status-presets';
 import { renderAppView } from './view-sections';
 
-const THEME_STORAGE_KEY = 'endnote-exporter.theme-preference';
-const SESSION_STATE_STORAGE_KEY = 'endnote-exporter.session-state';
-const THEME_COLORS: Record<ResolvedTheme, string> = {
-  dark: '#11161d',
-  light: '#f3eee6',
-};
-
-type SessionStateMarkerPhase = 'conversion-complete' | 'converting';
-
-interface SessionStateMarker {
-  phase: SessionStateMarkerPhase;
-  version: 1;
-}
-
 export async function mountApp(root: HTMLElement): Promise<void> {
   const runtime = detectBrowserRuntime();
-  let state = initialiseThemeState(createInitialState(runtime));
-  state = withSessionNotice(state, takeSessionNotice());
+  let state = createInitialState(runtime);
 
   const workerClient = createExportWorkerClient();
   globalThis.addEventListener(
@@ -75,8 +55,6 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       ? nextStateOrUpdater(state)
       : nextStateOrUpdater;
 
-    syncSessionStateMarker(state);
-
     if (options.render !== false) {
       render(root, state, controller, previousState);
     }
@@ -95,21 +73,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   });
 
   attachSkipLinkFocus();
-  syncSessionStateMarker(state);
   render(root, state, controller);
-
-  const themeMediaQuery = getThemeMediaQuery();
-  themeMediaQuery?.addEventListener('change', () => {
-    updateState((currentState) => {
-      if (currentState.themePreference !== 'system') {
-        return currentState;
-      }
-
-      const resolvedTheme = resolveThemePreference('system');
-      applyDocumentTheme('system', resolvedTheme);
-      return withTheme(currentState, 'system', resolvedTheme);
-    });
-  });
 
   if (!runtime.isServedMode) {
     updateState((currentState) => withStatus({
@@ -169,7 +133,6 @@ interface Controller {
   handleDownload: () => void;
   handleConvertAnother: () => void;
   handleRetry: () => void;
-  handleThemePreferenceChange: (themePreference: ThemePreference) => void;
 }
 
 interface ControllerDependencies {
@@ -314,13 +277,6 @@ export function createController({
         buildReadyStatus(currentState.runtime),
       ));
     },
-
-    handleThemePreferenceChange(themePreference) {
-      const resolvedTheme = resolveThemePreference(themePreference);
-      persistThemePreference(themePreference);
-      applyDocumentTheme(themePreference, resolvedTheme);
-      updateState((currentState) => withTheme(currentState, themePreference, resolvedTheme));
-    },
   };
 }
 
@@ -339,16 +295,6 @@ function attachController(root: HTMLElement, controller: Controller): void {
   const attachmentBasePathInput = root.querySelector<HTMLInputElement>('#attachment-base-path');
   attachmentBasePathInput?.addEventListener('input', (event) => {
     controller.handleAttachmentBasePathInput((event.target as HTMLInputElement).value);
-  });
-
-  const themeButtons = root.querySelectorAll<HTMLButtonElement>('[data-theme-preference]');
-  themeButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      const themePreference = button.dataset.themePreference;
-      if (themePreference === 'system' || themePreference === 'light' || themePreference === 'dark') {
-        controller.handleThemePreferenceChange(themePreference);
-      }
-    });
   });
 
   const dropZone = root.querySelector<HTMLElement>('#zip-dropzone');
@@ -453,174 +399,4 @@ function attachSkipLinkFocus(doc: Document = document): void {
     target.scrollIntoView({ block: 'start' });
     doc.defaultView?.history.replaceState(null, '', targetId);
   });
-}
-
-function initialiseThemeState(state: AppState): AppState {
-  const themePreference = readStoredThemePreference();
-  const resolvedTheme = resolveThemePreference(themePreference);
-  applyDocumentTheme(themePreference, resolvedTheme);
-  return withTheme(state, themePreference, resolvedTheme);
-}
-
-function readStoredThemePreference(): ThemePreference {
-  if (typeof document !== 'undefined') {
-    const documentPreference = document.documentElement.dataset.themePreference;
-    if (
-      documentPreference === 'system'
-      || documentPreference === 'light'
-      || documentPreference === 'dark'
-    ) {
-      return documentPreference;
-    }
-  }
-
-  if (typeof localStorage === 'undefined') {
-    return 'system';
-  }
-
-  try {
-    const storedValue = localStorage.getItem(THEME_STORAGE_KEY);
-    return storedValue === 'light' || storedValue === 'dark' ? storedValue : 'system';
-  } catch {
-    return 'system';
-  }
-}
-
-function persistThemePreference(themePreference: ThemePreference): void {
-  if (typeof localStorage === 'undefined') {
-    return;
-  }
-
-  try {
-    if (themePreference === 'system') {
-      localStorage.removeItem(THEME_STORAGE_KEY);
-      return;
-    }
-
-    localStorage.setItem(THEME_STORAGE_KEY, themePreference);
-  } catch {
-    // Ignore storage write failures and continue with the in-memory theme selection.
-  }
-}
-
-function resolveThemePreference(themePreference: ThemePreference): ResolvedTheme {
-  if (themePreference === 'light' || themePreference === 'dark') {
-    return themePreference;
-  }
-
-  return getThemeMediaQuery()?.matches ? 'dark' : 'light';
-}
-
-function applyDocumentTheme(themePreference: ThemePreference, resolvedTheme: ResolvedTheme): void {
-  if (typeof document === 'undefined') {
-    return;
-  }
-
-  document.documentElement.dataset.theme = resolvedTheme;
-  document.documentElement.dataset.themePreference = themePreference;
-  document.documentElement.style.colorScheme = resolvedTheme;
-
-  const themeColorMeta = 'querySelector' in document
-    ? document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-    : null;
-  themeColorMeta?.setAttribute('content', THEME_COLORS[resolvedTheme]);
-}
-
-function getThemeMediaQuery(): MediaQueryList | undefined {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return undefined;
-  }
-
-  return window.matchMedia('(prefers-color-scheme: dark)');
-}
-
-export function syncSessionStateMarker(
-  state: AppState,
-  storage: Pick<Storage, 'removeItem' | 'setItem'> | undefined = getSessionStorage(),
-): void {
-  if (!storage) {
-    return;
-  }
-
-  if (state.phase === 'converting' || state.phase === 'conversion-complete') {
-    storage.setItem(SESSION_STATE_STORAGE_KEY, JSON.stringify({
-      phase: state.phase,
-      version: 1,
-    } satisfies SessionStateMarker));
-    return;
-  }
-
-  storage.removeItem(SESSION_STATE_STORAGE_KEY);
-}
-
-export function createSessionNoticeFromMarker(phase: SessionStateMarkerPhase): SessionNotice {
-  if (phase === 'converting') {
-    return {
-      message: 'A previous in-memory conversion was interrupted. For privacy, progress is not restored after refresh or tab replacement.',
-      recoveryGuidance: [
-        {
-          detail: 'Select the same ZIP again to restart the conversion.',
-          label: 'Re-select the library ZIP',
-        },
-        {
-          detail: 'Keep this tab open until the review workspace appears so the in-memory result is available for download.',
-          label: 'Avoid refreshing during conversion',
-        },
-      ],
-      severity: 'warning',
-      title: 'Previous session was interrupted',
-    };
-  }
-
-  return {
-    message: 'A previous conversion result was cleared on refresh. Results are not restored after page reload for privacy reasons.',
-    recoveryGuidance: [
-      {
-        detail: 'Run the same ZIP again if you still need to inspect the result or download a fresh XML file.',
-        label: 'Re-run the ZIP when needed',
-      },
-      {
-        detail: "Download the XML before refreshing — results are not saved between sessions.",
-        label: 'Finish download in the same session',
-      },
-    ],
-    severity: 'warning',
-    title: 'Previous review data was cleared',
-  };
-}
-
-export function takeSessionNotice(
-  storage: Pick<Storage, 'getItem' | 'removeItem'> | undefined = getSessionStorage(),
-): SessionNotice | undefined {
-  if (!storage) {
-    return undefined;
-  }
-
-  try {
-    const rawMarker = storage.getItem(SESSION_STATE_STORAGE_KEY);
-    storage.removeItem(SESSION_STATE_STORAGE_KEY);
-
-    if (!rawMarker) {
-      return undefined;
-    }
-
-    const marker = JSON.parse(rawMarker) as Partial<SessionStateMarker>;
-
-    if (marker.phase !== 'converting' && marker.phase !== 'conversion-complete') {
-      return undefined;
-    }
-
-    return createSessionNoticeFromMarker(marker.phase);
-  } catch {
-    storage.removeItem(SESSION_STATE_STORAGE_KEY);
-    return undefined;
-  }
-}
-
-function getSessionStorage(): Storage | undefined {
-  if (typeof sessionStorage === 'undefined') {
-    return undefined;
-  }
-
-  return sessionStorage;
 }

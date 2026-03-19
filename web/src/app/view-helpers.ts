@@ -82,17 +82,6 @@ export function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;');
 }
 
-export function renderTooltip(id: string, label: string, text: string): string {
-  return `
-    <span class="tooltip">
-      <button class="tooltip__trigger" type="button" aria-label="${escapeHtml(label)}" aria-describedby="${escapeHtml(id)}">
-        <span aria-hidden="true">i</span>
-      </button>
-      <span class="tooltip__bubble" role="tooltip" id="${escapeHtml(id)}">${escapeHtml(text)}</span>
-    </span>
-  `;
-}
-
 export function renderAttachmentIndicator(hasPdfAttachment: boolean): string {
   const label = hasPdfAttachment
     ? 'Verified PDF attachment present'
