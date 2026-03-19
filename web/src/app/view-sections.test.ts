@@ -76,9 +76,13 @@ function buildSelectingState(): AppState {
 }
 
 describe('renderAppView', () => {
-  it('renders the redesigned input panel with disabled actions by default', () => {
+  it('renders the clean-slate mockup intake view with disabled actions by default', () => {
     const view = renderAppView(buildSelectingState());
 
+    expect(view).toContain('class="app-main-wrapper"');
+    expect(view).toContain('class="mockup-container"');
+    expect(view).not.toContain('class="shell"');
+    expect(view).not.toContain('class="hero');
     expect(view).toContain('id="zip-file-input"');
     expect(view).toContain('id="zip-dropzone"');
     expect(view).toContain('id="remove-file-button"');
@@ -86,12 +90,14 @@ describe('renderAppView', () => {
     expect(view).toContain('id="attachment-base-path"');
     expect(view).toContain('Browse to select library folder');
     expect(view).toMatch(/Browse to select library folder[\s\S]*disabled/);
-    expect(view).toContain('upload-dropzone--default');
+    expect(view).toContain('dropzone dropzone--default');
     expect(view).toContain('Create XML');
+    expect(view).toContain('class="button button--disabled"');
+    expect(view).toContain('class="submit-help"');
     expect(view).toMatch(/id="create-xml-button"[^>]*disabled/);
   });
 
-  it('renders the queued-file success state with formatted size and enabled create action', () => {
+  it('renders the queued-file state with enabled create action and hidden submit help', () => {
     const queuedState = withAttachmentBasePath(
       withPendingFile(buildSelectingState(), { name: 'library.zip', size: 1536 } as File),
       '/Users/me/Documents/MyLibrary.enlp',
@@ -105,11 +111,13 @@ describe('renderAppView', () => {
 
     const view = renderAppView(state);
 
-    expect(view).toContain('upload-dropzone--ready');
+    expect(view).toContain('dropzone dropzone--ready');
     expect(view).toContain('library.zip');
     expect(view).toContain('1.5 KB');
     expect(view).toContain('id="create-xml-button"');
-    expect(view).not.toMatch(/id="create-xml-button"[^>]*disabled/);
+    expect(view).toContain('class="button button--success"');
+    expect(view).toContain('display: none;');
+    expect(view).toMatch(/id="create-xml-button"[\s\S]*aria-disabled="false"/);
   });
 
   it('renders the invalid file state when intake validation fails', () => {
@@ -125,12 +133,21 @@ describe('renderAppView', () => {
 
     const view = renderAppView(state);
 
-    expect(view).toContain('upload-dropzone--invalid');
+    expect(view).toContain('dropzone dropzone--invalid');
     expect(view).toContain('role="alert"');
     expect(view).toContain('Please select a ZIP file containing your EndNote library');
   });
 
-  it('renders a results accordion and strips unsafe DOI href values', () => {
+  it('renders an inline loading block for booting without the retired hero shell', () => {
+    const view = renderAppView(createInitialState(buildRuntime()));
+
+    expect(view).toContain('class="loading-state"');
+    expect(view).toContain('Preparing browser-local conversion');
+    expect(view).not.toContain('task-card');
+    expect(view).not.toContain('results-shell');
+  });
+
+  it('renders a results header, summary table, and accordion while stripping unsafe DOI href values', () => {
     const state = withStatus(
       withExportResult(buildSelectingState(), buildExportResult()),
       {
@@ -144,6 +161,10 @@ describe('renderAppView', () => {
     const view = renderAppView(state);
 
     expect(view).toContain('<details class="records-accordion" open>');
+  expect(view).toContain('class="results-header"');
+  expect(view).toContain('class="results-actions"');
+  expect(view).toContain('class="summary-table"');
+  expect(view).toContain('class="records-table"');
     expect(view).toContain('id="download-button"');
     expect(view).toContain('id="convert-another-button"');
     expect(view).toContain('Warnings');
@@ -165,10 +186,10 @@ describe('renderAppView', () => {
     const view = renderAppView(state);
 
     expect(view).toContain('Warnings');
-    expect(view).toContain('No warnings detected.');
+    expect(view).toContain('No warnings detected');
   });
 
-  it('renders the redesigned error panel from state status text and recovery action', () => {
+  it('renders the centered error mockup using status title, first recovery label, and retry action', () => {
     const errorState = withStatus(
       {
         ...buildSelectingState(),
@@ -197,7 +218,10 @@ describe('renderAppView', () => {
 
     const view = renderAppView(errorState);
 
-    expect(view).toContain('Something went wrong');
+    expect(view).toContain('class="error-container"');
+    expect(view).toContain('class="error-box"');
+    expect(view).toContain('Convert EndNote Library to XML');
+    expect(view).toContain('Reload the page');
     expect(view).toContain('Startup failed');
     expect(view).toContain('Something went wrong on startup. Try reloading the page.');
     expect(view).toContain('id="retry-button"');

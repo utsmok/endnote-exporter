@@ -131,7 +131,8 @@ function render(
   focusPhaseTarget(root, state, previousState);
 }
 
-interface Controller {
+export interface Controller {
+  getState: () => AppState;
   handleAttachmentBasePathInput: (value: string) => void;
   handleCreateXml: () => Promise<void>;
   handleDirectoryPick: () => void;
@@ -166,6 +167,8 @@ export function createController({
   workerClient,
 }: ControllerDependencies): Controller {
   return {
+    getState,
+
     handleAttachmentBasePathInput(value: string) {
       updateState((currentState) => withAttachmentBasePath(currentState, value), { render: false });
     },
@@ -371,7 +374,7 @@ export function createController({
   };
 }
 
-function attachController(root: HTMLElement, controller: Controller): void {
+export function attachController(root: HTMLElement, controller: Controller): void {
   const directoryButton = root.querySelector<HTMLButtonElement>('#directory-picker-button');
   directoryButton?.addEventListener('click', () => controller.handleDirectoryPick());
 
@@ -388,6 +391,7 @@ function attachController(root: HTMLElement, controller: Controller): void {
   const attachmentBasePathInput = root.querySelector<HTMLInputElement>('#attachment-base-path');
   attachmentBasePathInput?.addEventListener('input', (event) => {
     controller.handleAttachmentBasePathInput((event.target as HTMLInputElement).value);
+    syncCreateXmlActionState(root, controller.getState());
   });
 
   const dropZone = root.querySelector<HTMLElement>('#zip-dropzone');
@@ -395,7 +399,7 @@ function attachController(root: HTMLElement, controller: Controller): void {
     dropZone.addEventListener('keydown', (event) => controller.handleDropZoneKeyDown(event));
 
     const setDragActive = (active: boolean) => {
-      dropZone.classList.toggle('file-input-label--drag-active', active);
+      dropZone.classList.toggle('drag-active', active);
     };
 
     dropZone.addEventListener('dragenter', (event) => {
@@ -441,6 +445,26 @@ function attachController(root: HTMLElement, controller: Controller): void {
 
   const retryButton = root.querySelector<HTMLButtonElement>('#retry-button');
   retryButton?.addEventListener('click', () => controller.handleRetry());
+
+  syncCreateXmlActionState(root, controller.getState());
+}
+
+export function syncCreateXmlActionState(root: ParentNode, state: AppState): void {
+  const createXmlButton = root.querySelector<HTMLButtonElement>('#create-xml-button');
+  const submitHelp = root.querySelector<HTMLElement>('.submit-help');
+  const canCreateXml = Boolean(state.pendingFile) && state.attachmentBasePath.trim().length > 0;
+
+  if (createXmlButton) {
+    createXmlButton.disabled = !canCreateXml;
+    createXmlButton.className = canCreateXml
+      ? 'button button--success'
+      : 'button button--disabled';
+    createXmlButton.setAttribute('aria-disabled', String(!canCreateXml));
+  }
+
+  if (submitHelp) {
+    submitHelp.style.display = canCreateXml ? 'none' : 'block';
+  }
 }
 
 function buildAttachmentOptions(state: AppState): { baseLibraryPath: string } | undefined {

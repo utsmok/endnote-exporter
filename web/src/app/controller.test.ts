@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createController } from './controller';
+import { createController, syncCreateXmlActionState } from './controller';
 import {
   createInitialState,
   withDownloadError,
@@ -118,11 +118,81 @@ function buildRoot(fileInputValue = 'queued.zip'): HTMLElement {
   } as unknown as HTMLElement;
 }
 
+function buildActionRoot(button: HTMLButtonElement, submitHelp: HTMLElement): ParentNode {
+  return {
+    querySelector: vi.fn((selector: string) => {
+      if (selector === '#create-xml-button') {
+        return button;
+      }
+
+      if (selector === '.submit-help') {
+        return submitHelp;
+      }
+
+      return null;
+    }),
+  } as unknown as ParentNode;
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe('createController', () => {
+  it('updates the Create XML button class, disabled state, and submit help visibility from current state', () => {
+    const createXmlButton = {
+      className: 'button button--disabled',
+      disabled: true,
+      setAttribute: vi.fn(),
+    } as unknown as HTMLButtonElement;
+    const submitHelp = {
+      style: {
+        display: 'block',
+      },
+    } as unknown as HTMLElement;
+
+    syncCreateXmlActionState(
+      buildActionRoot(createXmlButton, submitHelp),
+      {
+        ...createInitialState(buildRuntime()),
+        attachmentBasePath: '/Users/me/Documents/MyLibrary.enlp',
+        pendingFile: { name: 'library.zip' } as File,
+      },
+    );
+
+    expect(createXmlButton.disabled).toBe(false);
+    expect(createXmlButton.className).toBe('button button--success');
+    expect(createXmlButton.setAttribute).toHaveBeenCalledWith('aria-disabled', 'false');
+    expect(submitHelp.style.display).toBe('none');
+  });
+
+  it('keeps the Create XML button disabled when the library path is blank', () => {
+    const createXmlButton = {
+      className: 'button button--success',
+      disabled: false,
+      setAttribute: vi.fn(),
+    } as unknown as HTMLButtonElement;
+    const submitHelp = {
+      style: {
+        display: 'none',
+      },
+    } as unknown as HTMLElement;
+
+    syncCreateXmlActionState(
+      buildActionRoot(createXmlButton, submitHelp),
+      {
+        ...createInitialState(buildRuntime()),
+        attachmentBasePath: '   ',
+        pendingFile: { name: 'library.zip' } as File,
+      },
+    );
+
+    expect(createXmlButton.disabled).toBe(true);
+    expect(createXmlButton.className).toBe('button button--disabled');
+    expect(createXmlButton.setAttribute).toHaveBeenCalledWith('aria-disabled', 'true');
+    expect(submitHelp.style.display).toBe('block');
+  });
+
   it('uses the latest state when handling downloads after conversion', () => {
     let state = createInitialState(buildRuntime());
     const download = vi.fn();
