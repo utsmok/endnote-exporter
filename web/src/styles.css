@@ -301,18 +301,6 @@ h3 {
 .review-workspace__description {
   color: var(--text-secondary);
   font-size: 1.05rem;
-}
-
-  font-weight: 500;
-}
-
-.instruction,
-.section-subcopy,
-.field-help,
-.review-workspace__copy,
-.review-workspace__description {
-  color: var(--text-secondary);
-  font-size: 1.05rem;
   line-height: 1.6;
 }
 
