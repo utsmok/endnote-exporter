@@ -1,14 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  createController,
-} from './controller';
+import { createController } from './controller';
 import {
   createInitialState,
   withDownloadError,
   withExportResult,
   type AppState,
 } from './state';
+import { LibraryNormalizationError } from '../core/errors';
 import type { BrowserRuntimeInfo } from '../adapters/browser-runtime';
 import type { PreparedLibrary } from '../core/library-types';
 import type { ExportResult } from '../types/export-result';
@@ -107,6 +106,18 @@ function buildConvertResponse(): ConvertPreparedLibrarySuccessResponse {
   };
 }
 
+function buildRoot(fileInputValue = 'queued.zip'): HTMLElement {
+  const fileInput = { value: fileInputValue };
+
+  return {
+    querySelector: vi.fn((selector: string) => (
+      selector === '#zip-file-input'
+        ? fileInput
+        : null
+    )),
+  } as unknown as HTMLElement;
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -121,7 +132,7 @@ describe('createController', () => {
       getState: () => state,
       pickDirectory: vi.fn(),
       prepareInput: vi.fn(),
-      root: { querySelector: () => null } as unknown as HTMLElement,
+      root: buildRoot(),
       updateState: (nextStateOrUpdater) => {
         state = typeof nextStateOrUpdater === 'function'
           ? nextStateOrUpdater(state)
@@ -156,7 +167,7 @@ describe('createController', () => {
       getState: () => state,
       pickDirectory: vi.fn(),
       prepareInput: vi.fn(),
-      root: { querySelector: () => null } as unknown as HTMLElement,
+      root: buildRoot(),
       updateState: (nextStateOrUpdater) => {
         state = typeof nextStateOrUpdater === 'function'
           ? nextStateOrUpdater(state)
@@ -184,7 +195,7 @@ describe('createController', () => {
       getState: () => state,
       pickDirectory: vi.fn(),
       prepareInput: vi.fn(),
-      root: { querySelector: () => null } as unknown as HTMLElement,
+      root: buildRoot(),
       updateState: (nextStateOrUpdater) => {
         state = typeof nextStateOrUpdater === 'function'
           ? nextStateOrUpdater(state)
@@ -205,6 +216,106 @@ describe('createController', () => {
       .toBe(state.downloadErrorMessage);
   });
 
+  it('queues a selected ZIP file without converting immediately', () => {
+    let state = createInitialState(buildRuntime());
+    const prepareInput = vi.fn(async () => buildPreparedLibrary());
+    const convertPreparedLibrary = vi.fn(async () => buildConvertResponse());
+
+    const controller = createController({
+      download: vi.fn(),
+      getState: () => state,
+      pickDirectory: vi.fn(),
+      prepareInput,
+      root: buildRoot(),
+      updateState: (nextStateOrUpdater) => {
+        state = typeof nextStateOrUpdater === 'function'
+          ? nextStateOrUpdater(state)
+          : nextStateOrUpdater;
+        return state;
+      },
+      workerClient: {
+        convertPreparedLibrary,
+        dispose: vi.fn(),
+        initialise: vi.fn(),
+        queryPreparedLibrary: vi.fn(),
+      },
+    });
+
+    controller.handleFileSelect({ name: 'library.zip', size: 5120 } as File);
+
+    expect(state.pendingFile).toMatchObject({ name: 'library.zip', size: 5120 });
+    expect(state.pendingFileError).toBeNull();
+    expect(state.phase).toBe('selecting-input');
+    expect(prepareInput).not.toHaveBeenCalled();
+    expect(convertPreparedLibrary).not.toHaveBeenCalled();
+  });
+
+  it('marks invalid file selections without queueing them', () => {
+    let state = createInitialState(buildRuntime());
+
+    const controller = createController({
+      download: vi.fn(),
+      getState: () => state,
+      pickDirectory: vi.fn(),
+      prepareInput: vi.fn(),
+      root: buildRoot(),
+      updateState: (nextStateOrUpdater) => {
+        state = typeof nextStateOrUpdater === 'function'
+          ? nextStateOrUpdater(state)
+          : nextStateOrUpdater;
+        return state;
+      },
+      workerClient: {
+        convertPreparedLibrary: vi.fn(),
+        dispose: vi.fn(),
+        initialise: vi.fn(),
+        queryPreparedLibrary: vi.fn(),
+      },
+    });
+
+    controller.handleFileSelect({ name: 'library.txt' } as File);
+
+    expect(state.pendingFile).toBeNull();
+    expect(state.pendingFileError).toBe('invalid-type');
+    expect(state.statusTitle).toBe('Invalid file');
+  });
+
+  it('requires a path before creating XML and routes to the PDF-path error state', async () => {
+    let state = createInitialState(buildRuntime());
+    const prepareInput = vi.fn(async () => buildPreparedLibrary());
+    const convertPreparedLibrary = vi.fn(async () => buildConvertResponse());
+
+    const controller = createController({
+      download: vi.fn(),
+      getState: () => state,
+      pickDirectory: vi.fn(),
+      prepareInput,
+      root: buildRoot(),
+      updateState: (nextStateOrUpdater) => {
+        state = typeof nextStateOrUpdater === 'function'
+          ? nextStateOrUpdater(state)
+          : nextStateOrUpdater;
+        return state;
+      },
+      workerClient: {
+        convertPreparedLibrary,
+        dispose: vi.fn(),
+        initialise: vi.fn(),
+        queryPreparedLibrary: vi.fn(),
+      },
+    });
+
+    controller.handleFileSelect({ name: 'library.zip' } as File);
+    controller.handleAttachmentBasePathInput('   ');
+    await controller.handleCreateXml();
+
+    expect(state.phase).toBe('conversion-error');
+    expect(state.specificErrorType).toBe('pdf-path');
+    expect(state.statusTitle).toBe('Library location is required');
+    expect(prepareInput).not.toHaveBeenCalled();
+    expect(convertPreparedLibrary).not.toHaveBeenCalled();
+  });
+
   it('passes a trimmed attachment base path into ZIP conversion options', async () => {
     let state = createInitialState(buildRuntime());
     const preparedLibrary = buildPreparedLibrary();
@@ -216,7 +327,7 @@ describe('createController', () => {
       getState: () => state,
       pickDirectory: vi.fn(),
       prepareInput,
-      root: { querySelector: () => null } as unknown as HTMLElement,
+      root: buildRoot(),
       updateState: (nextStateOrUpdater) => {
         state = typeof nextStateOrUpdater === 'function'
           ? nextStateOrUpdater(state)
@@ -231,8 +342,9 @@ describe('createController', () => {
       },
     });
 
+    controller.handleFileSelect({ name: 'library.zip' } as File);
     controller.handleAttachmentBasePathInput('  /Users/me/Documents/MyLibrary.enlp  ');
-    await controller.handleFileSelect({ name: 'library.zip' } as File);
+    await controller.handleCreateXml();
 
     expect(prepareInput).toHaveBeenCalledWith({
       file: expect.objectContaining({ name: 'library.zip' }),
@@ -244,17 +356,18 @@ describe('createController', () => {
     );
   });
 
-  it('omits attachment options when no base path is provided', async () => {
+  it('stores the export result after successful ZIP conversion', async () => {
     let state = createInitialState(buildRuntime());
     const preparedLibrary = buildPreparedLibrary();
+    const prepareInput = vi.fn(async () => preparedLibrary);
     const convertPreparedLibrary = vi.fn(async () => buildConvertResponse());
 
     const controller = createController({
       download: vi.fn(),
       getState: () => state,
       pickDirectory: vi.fn(),
-      prepareInput: vi.fn(async () => preparedLibrary),
-      root: { querySelector: () => null } as unknown as HTMLElement,
+      prepareInput,
+      root: buildRoot(),
       updateState: (nextStateOrUpdater) => {
         state = typeof nextStateOrUpdater === 'function'
           ? nextStateOrUpdater(state)
@@ -269,11 +382,88 @@ describe('createController', () => {
       },
     });
 
-    await controller.handleFileSelect({ name: 'library.zip' } as File);
+    controller.handleFileSelect({ name: 'library.zip' } as File);
+    controller.handleAttachmentBasePathInput('/Users/me/Documents/MyLibrary.enlp');
+    await controller.handleCreateXml();
 
-    expect(convertPreparedLibrary).toHaveBeenCalledWith(
-      preparedLibrary,
-      undefined,
-    );
+    expect(state.phase).toBe('conversion-complete');
+    expect(state.exportResult).toEqual(buildExportResult());
+    expect(state.pendingFile).toBeNull();
+    expect(state.specificErrorType).toBeNull();
+  });
+
+  it('routes normalization failures to the file-specific error state', async () => {
+    let state = createInitialState(buildRuntime());
+
+    const controller = createController({
+      download: vi.fn(),
+      getState: () => state,
+      pickDirectory: vi.fn(),
+      prepareInput: vi.fn(async () => {
+        throw new LibraryNormalizationError({
+          code: 'MALFORMED_ARCHIVE',
+          context: {
+            archiveFileName: 'library.zip',
+          },
+          message: 'Archive could not be read.',
+        });
+      }),
+      root: buildRoot(),
+      updateState: (nextStateOrUpdater) => {
+        state = typeof nextStateOrUpdater === 'function'
+          ? nextStateOrUpdater(state)
+          : nextStateOrUpdater;
+        return state;
+      },
+      workerClient: {
+        convertPreparedLibrary: vi.fn(),
+        dispose: vi.fn(),
+        initialise: vi.fn(),
+        queryPreparedLibrary: vi.fn(),
+      },
+    });
+
+    controller.handleFileSelect({ name: 'library.zip' } as File);
+    controller.handleAttachmentBasePathInput('/Users/me/Documents/MyLibrary.enlp');
+    await controller.handleCreateXml();
+
+    expect(state.phase).toBe('conversion-error');
+    expect(state.specificErrorType).toBe('file');
+    expect(state.statusTitle).toBe('Library ZIP couldn’t be processed');
+    expect(state.notes).toContain('Archive could not be read.');
+  });
+
+  it('removes a queued ZIP file and clears the file input value', () => {
+    let state = createInitialState(buildRuntime());
+    const root = buildRoot('library.zip');
+    const zipFileInput = root.querySelector<HTMLInputElement>('#zip-file-input');
+
+    const controller = createController({
+      download: vi.fn(),
+      getState: () => state,
+      pickDirectory: vi.fn(),
+      prepareInput: vi.fn(),
+      root,
+      updateState: (nextStateOrUpdater) => {
+        state = typeof nextStateOrUpdater === 'function'
+          ? nextStateOrUpdater(state)
+          : nextStateOrUpdater;
+        return state;
+      },
+      workerClient: {
+        convertPreparedLibrary: vi.fn(),
+        dispose: vi.fn(),
+        initialise: vi.fn(),
+        queryPreparedLibrary: vi.fn(),
+      },
+    });
+
+    controller.handleFileSelect({ name: 'library.zip' } as File);
+    controller.handleRemoveFile();
+
+    expect(state.pendingFile).toBeNull();
+    expect(state.pendingFileError).toBeNull();
+    expect(state.selectedInputLabel).toBeUndefined();
+    expect(zipFileInput?.value).toBe('');
   });
 });

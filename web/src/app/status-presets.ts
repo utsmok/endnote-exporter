@@ -104,6 +104,65 @@ export function buildInputRejectedStatus(): StatusDescriptor {
   );
 }
 
+export function buildPdfPathErrorStatus(): StatusDescriptor {
+  return createStatus(
+    'Library location is required',
+    'Add the original EndNote library folder or .enlp package path before creating the XML.',
+    'error',
+    'recovery',
+    [
+      createRecoveryGuidance(
+        'Use the original library location',
+        'Paste the folder that contains the .enl + .Data library, or the full .enlp package path from the source library.',
+      ),
+      createRecoveryGuidance(
+        'Then create the XML again',
+        'Return to the intake step, confirm the queued ZIP, and retry after the library location field is filled in.',
+      ),
+    ],
+  );
+}
+
+export function buildFileTypeErrorStatus(): StatusDescriptor {
+  return createStatus(
+    'Library ZIP couldn’t be processed',
+    'Choose a ZIP that contains a complete EndNote library: the .enl file with its matching .Data folder, or packaged .enlp contents.',
+    'error',
+    'recovery',
+    [
+      createRecoveryGuidance(
+        'Choose a different ZIP',
+        'Use a ZIP created from a complete EndNote library instead of a partial export or unrelated archive.',
+      ),
+      createRecoveryGuidance(
+        'Check the library contents',
+        'Make sure the archive includes the .enl file and its matching .Data/sdb/sdb.eni database payload.',
+      ),
+    ],
+  );
+}
+
+export function buildGenericErrorStatus(detail: string): StatusDescriptor {
+  return createStatus(
+    'The XML couldn’t be created',
+    detail.trim().length > 0
+      ? detail
+      : 'Something went wrong while creating the XML. Try again with the same ZIP, or choose a different library archive.',
+    'error',
+    'recovery',
+    [
+      createRecoveryGuidance(
+        'Try the conversion again',
+        'If the issue was temporary, selecting the ZIP again and recreating the XML may succeed.',
+      ),
+      createRecoveryGuidance(
+        'Use the desktop app if needed',
+        'If the browser workflow keeps failing, the desktop app remains available for the same library.',
+      ),
+    ],
+  );
+}
+
 export function buildDirectoryCancelledStatus(): StatusDescriptor {
   return createStatus(
     'No folder selected',

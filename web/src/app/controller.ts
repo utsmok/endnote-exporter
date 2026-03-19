@@ -4,6 +4,7 @@ import {
   pickLibraryDirectory,
   prepareLibraryFromBrowserInput,
 } from '../adapters/browser-input';
+import { isLibraryNormalizationError } from '../core/errors';
 import {
   clearDownloadError,
   clearExportResult,
@@ -13,8 +14,10 @@ import {
   withDownloadError,
   withExportResult,
   withNote,
+  withPendingFile,
   withPhase,
   withSelectedInput,
+  withSpecificError,
   type AppState,
 } from './state';
 import { downloadExportResult } from './download';
@@ -23,8 +26,11 @@ import {
   buildConversionFailureStatus,
   buildConvertingStatus,
   buildDirectoryCancelledStatus,
+  buildFileTypeErrorStatus,
+  buildGenericErrorStatus,
   buildInitialisationFailureStatus,
   buildInputRejectedStatus,
+  buildPdfPathErrorStatus,
   buildReadyStatus,
   buildUnsupportedLaunchStatus,
   buildWorkerUnavailableStatus,
@@ -127,11 +133,13 @@ function render(
 
 interface Controller {
   handleAttachmentBasePathInput: (value: string) => void;
+  handleCreateXml: () => Promise<void>;
   handleDirectoryPick: () => void;
   handleDropZoneKeyDown: (event: KeyboardEvent) => void;
   handleFileSelect: (file: File) => void;
   handleDownload: () => void;
   handleConvertAnother: () => void;
+  handleRemoveFile: () => void;
   handleRetry: () => void;
 }
 
@@ -160,6 +168,83 @@ export function createController({
   return {
     handleAttachmentBasePathInput(value: string) {
       updateState((currentState) => withAttachmentBasePath(currentState, value), { render: false });
+    },
+
+    async handleCreateXml() {
+      const currentState = getState();
+      const pendingFile = currentState.pendingFile;
+
+      if (!pendingFile) {
+        return;
+      }
+
+      const baseLibraryPath = currentState.attachmentBasePath.trim();
+      if (baseLibraryPath.length === 0) {
+        updateState((stateWithoutPath) => withStatus(
+          withSpecificError(
+            withPhase(stateWithoutPath, 'conversion-error'),
+            'pdf-path',
+          ),
+          buildPdfPathErrorStatus(),
+        ));
+        return;
+      }
+
+      updateState((stateForConversion) => withStatus(
+        withSelectedInput(
+          withSpecificError(stateForConversion, null),
+          pendingFile.name,
+        ),
+        buildConvertingStatus(pendingFile.name),
+      ));
+
+      try {
+        const library = await prepareInput({
+          file: pendingFile,
+          kind: 'zip-file',
+        });
+        const response = await workerClient.convertPreparedLibrary(
+          library,
+          { baseLibraryPath },
+        );
+
+        updateState((stateAfterConversion) => withStatus(
+          withSpecificError(
+            withExportResult(stateAfterConversion, response.exportResult),
+            null,
+          ),
+          buildConversionCompleteStatus(response.exportResult, 'zip'),
+        ));
+      } catch (error) {
+        if (isLibraryNormalizationError(error)) {
+          updateState((stateAfterFileFailure) => withStatus(
+            withSpecificError(
+              withNote(
+                withPhase(stateAfterFileFailure, 'conversion-error'),
+                error.message,
+              ),
+              'file',
+            ),
+            buildFileTypeErrorStatus(),
+          ));
+          return;
+        }
+
+        const detail = error instanceof Error
+          ? error.message
+          : 'Unknown conversion error.';
+
+        updateState((stateAfterFailure) => withStatus(
+          withSpecificError(
+            withNote(
+              withPhase(stateAfterFailure, 'conversion-error'),
+              detail,
+            ),
+            'generic',
+          ),
+          buildGenericErrorStatus(detail),
+        ));
+      }
     },
 
     async handleDirectoryPick() {
@@ -206,40 +291,46 @@ export function createController({
       }
     },
 
-    async handleFileSelect(file: File) {
-      if (!file.name.endsWith('.zip')) {
-        updateState((currentState) => withStatus(currentState, buildInputRejectedStatus()));
+    handleFileSelect(file: File) {
+      if (!isZipFile(file)) {
+        updateState((currentState) => withStatus(
+          withSpecificError(
+            withPhase(
+              withPendingFile(currentState, null, 'invalid-type'),
+              'selecting-input',
+            ),
+            null,
+          ),
+          buildInputRejectedStatus(),
+        ));
+        resetFileInput(root);
         return;
       }
 
       updateState((currentState) => withStatus(
-        withSelectedInput(currentState, file.name),
-        buildConvertingStatus(file.name),
-      ));
-
-      try {
-        const library = await prepareInput({
-          file,
-          kind: 'zip-file',
-        });
-        const response = await workerClient.convertPreparedLibrary(
-          library,
-          buildAttachmentOptions(getState()),
-        );
-
-        updateState((currentState) => withStatus(
-          withExportResult(currentState, response.exportResult),
-          buildConversionCompleteStatus(response.exportResult, 'zip'),
-        ));
-      } catch (error) {
-        updateState((currentState) => withStatus(
-          withNote(
-            withPhase(currentState, 'conversion-error'),
-            error instanceof Error ? error.message : 'Unknown conversion error.',
+        withSpecificError(
+          withPhase(
+            withPendingFile(currentState, file),
+            'selecting-input',
           ),
-          buildConversionFailureStatus('zip'),
-        ));
-      }
+          null,
+        ),
+        buildReadyStatus(currentState.runtime),
+      ));
+    },
+
+    handleRemoveFile() {
+      updateState((currentState) => withStatus(
+        withSpecificError(
+          withPhase(
+            withPendingFile(currentState, null),
+            'selecting-input',
+          ),
+          null,
+        ),
+        buildReadyStatus(currentState.runtime),
+      ));
+      resetFileInput(root);
     },
 
     handleDownload() {
@@ -286,9 +377,11 @@ function attachController(root: HTMLElement, controller: Controller): void {
 
   const fileInput = root.querySelector<HTMLInputElement>('#zip-file-input');
   fileInput?.addEventListener('change', (event) => {
-    const file = (event.target as HTMLInputElement).files?.[0];
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
     if (file) {
       controller.handleFileSelect(file);
+      input.value = '';
     }
   });
 
@@ -335,6 +428,14 @@ function attachController(root: HTMLElement, controller: Controller): void {
   const downloadButton = root.querySelector<HTMLButtonElement>('#download-button');
   downloadButton?.addEventListener('click', () => controller.handleDownload());
 
+  const createXmlButton = root.querySelector<HTMLButtonElement>('#create-xml-button');
+  createXmlButton?.addEventListener('click', () => {
+    void controller.handleCreateXml();
+  });
+
+  const removeFileButton = root.querySelector<HTMLButtonElement>('#remove-file-button');
+  removeFileButton?.addEventListener('click', () => controller.handleRemoveFile());
+
   const convertAnotherButton = root.querySelector<HTMLButtonElement>('#convert-another-button');
   convertAnotherButton?.addEventListener('click', () => controller.handleConvertAnother());
 
@@ -348,6 +449,18 @@ function buildAttachmentOptions(state: AppState): { baseLibraryPath: string } | 
   return baseLibraryPath.length > 0
     ? { baseLibraryPath }
     : undefined;
+}
+
+function resetFileInput(root: HTMLElement): void {
+  const fileInput = root.querySelector<HTMLInputElement>('#zip-file-input');
+
+  if (fileInput) {
+    fileInput.value = '';
+  }
+}
+
+function isZipFile(file: File): boolean {
+  return file.name.toLowerCase().endsWith('.zip');
 }
 
 function isPickerAbortError(error: unknown): boolean {

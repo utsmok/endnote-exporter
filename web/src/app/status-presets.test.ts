@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildConversionCompleteStatus,
+  buildFileTypeErrorStatus,
+  buildGenericErrorStatus,
+  buildPdfPathErrorStatus,
   buildReadyStatus,
 } from './status-presets';
 import type { BrowserRuntimeInfo } from '../adapters/browser-runtime';
@@ -70,5 +73,32 @@ describe('status presets', () => {
     expect(status.severity).toBe('warning');
     expect(status.workflowStage).toBe('review');
     expect(status.recoveryGuidance).toHaveLength(2);
+  });
+
+  it('describes the missing library path error with recovery semantics', () => {
+    const status = buildPdfPathErrorStatus();
+
+    expect(status.title).toBe('Library location is required');
+    expect(status.severity).toBe('error');
+    expect(status.workflowStage).toBe('recovery');
+    expect(status.message).toContain('original EndNote library folder or .enlp package path');
+  });
+
+  it('describes invalid library ZIP failures as file-specific recovery errors', () => {
+    const status = buildFileTypeErrorStatus();
+
+    expect(status.title).toBe('Library ZIP couldn’t be processed');
+    expect(status.severity).toBe('error');
+    expect(status.workflowStage).toBe('recovery');
+    expect(status.message).toContain('complete EndNote library');
+  });
+
+  it('preserves provided detail for generic conversion errors', () => {
+    const status = buildGenericErrorStatus('Unexpected worker failure');
+
+    expect(status.title).toBe('The XML couldn’t be created');
+    expect(status.severity).toBe('error');
+    expect(status.workflowStage).toBe('recovery');
+    expect(status.message).toBe('Unexpected worker failure');
   });
 });

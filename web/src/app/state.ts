@@ -35,10 +35,13 @@ export interface AppState {
   downloadErrorMessage: string | undefined;
   isItemModalOpen: boolean;
   notes: string[];
+  pendingFile?: File | null;
+  pendingFileError?: 'invalid-type' | null;
   phase: AppPhase;
   recoveryGuidance: RecoveryGuidance[];
   runtime: BrowserRuntimeInfo;
   selectedInputLabel?: string;
+  specificErrorType?: 'file' | 'pdf-path' | 'generic' | null;
   statusLiveMessage: string;
   statusMessage: string;
   statusSeverity: StatusSeverity;
@@ -58,9 +61,12 @@ export function createInitialState(runtime: BrowserRuntimeInfo): AppState {
     downloadErrorMessage: undefined,
     isItemModalOpen: false,
     notes: [...runtime.notes],
+    pendingFile: null,
+    pendingFileError: null,
     phase: 'booting',
     recoveryGuidance: [],
     runtime,
+    specificErrorType: null,
     statusLiveMessage: statusMessage,
     statusMessage,
     statusSeverity: 'informational',
@@ -76,6 +82,38 @@ export function withPhase(state: AppState, phase: AppPhase): AppState {
 
 export function withAttachmentBasePath(state: AppState, attachmentBasePath: string): AppState {
   return { ...state, attachmentBasePath };
+}
+
+export function withPendingFile(
+  state: AppState,
+  file: File | null,
+  error: 'invalid-type' | null = null,
+): AppState {
+  if (file) {
+    return {
+      ...state,
+      downloadErrorMessage: undefined,
+      pendingFile: file,
+      pendingFileError: error,
+      selectedInputLabel: file.name,
+    };
+  }
+
+  const { selectedInputLabel: _removedSelectedInputLabel, ...rest } = state;
+
+  return {
+    ...rest,
+    downloadErrorMessage: undefined,
+    pendingFile: null,
+    pendingFileError: error,
+  };
+}
+
+export function withSpecificError(
+  state: AppState,
+  errorType: Exclude<AppState['specificErrorType'], undefined>,
+): AppState {
+  return { ...state, specificErrorType: errorType };
 }
 
 export function withStatus(state: AppState, status: StatusDescriptor): AppState {
@@ -121,7 +159,10 @@ export function withExportResult(state: AppState, result: ExportResult): AppStat
     downloadErrorMessage: undefined,
     exportResult: result,
     isItemModalOpen: false,
+    pendingFile: null,
+    pendingFileError: null,
     phase: 'conversion-complete',
+    specificErrorType: null,
   };
 }
 
@@ -129,6 +170,8 @@ export function withSelectedInput(state: AppState, label: string): AppState {
   return {
     ...state,
     downloadErrorMessage: undefined,
+    pendingFile: null,
+    pendingFileError: null,
     selectedInputLabel: label,
     phase: 'converting',
   };
@@ -145,6 +188,9 @@ export function clearExportResult(state: AppState): AppState {
     ...rest,
     downloadErrorMessage: undefined,
     isItemModalOpen: false,
+    pendingFile: null,
+    pendingFileError: null,
     phase: 'selecting-input',
+    specificErrorType: null,
   };
 }
