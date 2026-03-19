@@ -25,7 +25,25 @@ export async function gotoApp(page: Page): Promise<void> {
 }
 
 export async function uploadFixtureZip(page: Page, fileName: string): Promise<void> {
-  await page.locator('#zip-file-input').setInputFiles(fixturePath(fileName));
+  const input = page.locator('#zip-file-input');
+  await expect(input).toBeVisible();
+  await input.setInputFiles(fixturePath(fileName));
+  // Wait for the queued file indicator to appear
+  await expect(page.locator('.queued-file')).toBeVisible();
+}
+
+export async function fillLibraryPath(page: Page, path: string): Promise<void> {
+  const input = page.locator('#attachment-base-path');
+  await expect(input).toBeVisible();
+  await input.fill(path);
+  // Wait for the input to have the value
+  await expect(input).toHaveValue(path);
+}
+
+export async function clickCreateXml(page: Page): Promise<void> {
+  const button = page.getByRole('button', { name: 'Create XML' });
+  await expect(button).toBeEnabled();
+  await button.click();
 }
 
 export async function expectConversionComplete(page: Page): Promise<void> {
@@ -38,11 +56,13 @@ export async function expectConversionComplete(page: Page): Promise<void> {
 export async function convertFixture(page: Page, fileName: string): Promise<void> {
   await gotoApp(page);
   await uploadFixtureZip(page, fileName);
+  await fillLibraryPath(page, '/test/library');
+  await clickCreateXml(page);
   await expectConversionComplete(page);
 }
 
 export function summaryLine(page: Page, label: string): Locator {
-  return page.locator('.success-summary p').filter({ hasText: label });
+  return page.locator('.summary-stat').filter({ hasText: label });
 }
 
 export async function readDownloadedText(
