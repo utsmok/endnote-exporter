@@ -30,7 +30,7 @@ export async function uploadFixtureZip(page: Page, fileName: string): Promise<vo
 
 export async function expectConversionComplete(page: Page): Promise<void> {
   await expect(
-    page.getByRole('heading', { name: 'Review workspace' }),
+    page.getByRole('heading', { name: 'Export ready for review' }),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Download Zotero XML' })).toBeVisible();
 }

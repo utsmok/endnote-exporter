@@ -17,9 +17,9 @@ test.describe('browser support matrix baseline', () => {
     await gotoApp(page);
 
     await expect(
-      page.getByText('Accepted ZIPs can contain an .enl library with its matching .Data folder or packaged .enlp contents.'),
+      page.locator('#zip-dropzone-help'),
     ).toBeVisible();
-    await expect(page.getByText('Choose ZIP file')).toBeVisible();
+    await expect(page.getByText('Browse for ZIP')).toBeVisible();
 
     if (browserName === 'chromium') {
       await expect(page.getByRole('button', { name: 'Choose library folder instead' })).toBeVisible();
