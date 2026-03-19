@@ -111,6 +111,7 @@ function renderHeroSection(state: AppState): string {
             ${state.recoveryGuidance.length > 0 ? renderRecoveryGuidance(state) : ''}
             ${renderStatusDetails(state)}
           </div>
+          ${state.sessionNotice ? renderSessionNotice(state) : ''}
         </div>
         <aside class="hero__column hero__column--task">
           <div class="task-card">
@@ -784,6 +785,31 @@ function renderWarnings(warnings: ExportWarning[]): string {
           </p>
         </div>
       </details>
+    </div>
+  `;
+}
+
+function renderSessionNotice(state: AppState): string {
+  if (!state.sessionNotice) {
+    return '';
+  }
+
+  return `
+    <div class="session-notice" role="alert" aria-labelledby="session-notice-title">
+      <div class="session-notice__header">
+        <span class="status-chip status-chip--${escapeHtml(state.sessionNotice.severity)}">${escapeHtml(SEVERITY_LABELS[state.sessionNotice.severity])}</span>
+      </div>
+      <p class="session-notice__title" id="session-notice-title">${escapeHtml(state.sessionNotice.title)}</p>
+      <p class="session-notice__message">${escapeHtml(state.sessionNotice.message)}</p>
+      ${state.sessionNotice.recoveryGuidance.length > 0 ? `        <ul class="session-notice__guidance">
+          ${state.sessionNotice.recoveryGuidance.map((item) => `
+            <li>
+              <strong>${escapeHtml(item.label)}</strong>
+              <span>${escapeHtml(item.detail)}</span>
+            </li>
+          `).join('')}
+        </ul>
+      ` : ''}
     </div>
   `;
 }
