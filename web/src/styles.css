@@ -396,6 +396,44 @@ h3 {
   text-transform: uppercase;
 }
 
+.session-notice {
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  border: 2px solid var(--cc-gold);
+  border-radius: 6px;
+  background: var(--warning-soft);
+}
+
+.session-notice__header {
+  margin-bottom: 0.5rem;
+}
+
+.session-notice__title {
+  margin: 0 0 0.5rem;
+  color: var(--text-strong);
+  font-weight: 700;
+}
+
+.session-notice__message {
+  margin: 0 0 0.75rem;
+  color: var(--text-secondary);
+}
+
+.session-notice__guidance {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.session-notice__guidance li {
+  margin-bottom: 0.25rem;
+}
+
+.session-notice__guidance strong {
+  color: var(--text-strong);
+}
+
 .section-heading {
   display: flex;
   justify-content: space-between;
