@@ -271,14 +271,49 @@ h3 {
   font-weight: 700;
   margin-bottom: 0.85rem;
 }
-
 .lede {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   margin-bottom: 0;
   max-width: 65ch;
   text-wrap: pretty;
   opacity: 0.95;
   color: #ffffff;
+  font-weight: 500;
+}
+
+.lede,
+.instruction,
+.enhancement-copy,
+.status-text,
+.field-help,
+.warning-list li,
+.error-list li,
+.section-subcopy,
+.review-workspace__copy,
+.review-workspace__description {
+  line-height: 1.6;
+}
+
+.instruction,
+.section-subcopy,
+.field-help,
+.review-workspace__copy,
+.review-workspace__description {
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+}
+
+  font-weight: 500;
+}
+
+.instruction,
+.section-subcopy,
+.field-help,
+.review-workspace__copy,
+.review-workspace__description {
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  line-height: 1.6;
 }
 
 .status-panel {
@@ -629,6 +664,78 @@ h3 {
   color: var(--cc-forest-green);
   font-size: 0.8rem;
   font-weight: 900;
+}
+
+.warnings {
+  margin: 0;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 2px solid var(--cc-gold);
+  background: var(--bg-card);
+}
+
+.warning-summary-list {
+  display: grid;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.warning-summary {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 2px solid var(--cc-gold);
+  border-radius: 6px;
+  background: var(--warning-soft);
+}
+
+.warning-summary__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.warning-summary__title {
+  margin: 0;
+  color: var(--text-strong);
+  font-weight: 700;
+  font-family: var(--font-display);
+}
+
+.warning-summary__guidance {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.warning-summary__guidance strong {
+  color: var(--text-strong);
+}
+
+.warning-list {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.warning-list code {
+  display: inline-block;
+  margin-right: 0.5rem;
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--cc-tomato);
+  font-weight: 700;
+}
+
+.error-list {
+  margin: 1.25rem 0;
+  padding-left: 1.5rem;
+  color: var(--cc-tomato);
+  font-weight: 500;
 }
 
 .items-table {
