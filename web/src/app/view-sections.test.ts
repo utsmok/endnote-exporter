@@ -5,10 +5,10 @@ import { createInitialState, withAttachmentBasePath, withExportResult, withPendi
 import type { BrowserRuntimeInfo } from '../adapters/browser-runtime';
 import type { ExportResult } from '../types/export-result';
 
-function buildRuntime(): BrowserRuntimeInfo {
+function buildRuntime({ directoryIntakeAvailable = false }: { directoryIntakeAvailable?: boolean } = {}): BrowserRuntimeInfo {
   return {
     directoryIntake: {
-      available: false,
+      available: directoryIntakeAvailable,
       notes: [],
     },
     isSecureContext: true,
@@ -88,6 +88,7 @@ describe('renderAppView', () => {
     expect(view).toContain('id="remove-file-button"');
     expect(view).toContain('id="create-xml-button"');
     expect(view).toContain('id="attachment-base-path"');
+    expect(view).toContain('id="attachment-base-path-browse-button"');
     expect(view).toContain('Browse to select library folder');
     expect(view).toMatch(/Browse to select library folder[\s\S]*disabled/);
     expect(view).toContain('dropzone dropzone--default');
@@ -95,6 +96,27 @@ describe('renderAppView', () => {
     expect(view).toContain('class="button button--disabled"');
     expect(view).toContain('class="submit-help"');
     expect(view).toMatch(/id="create-xml-button"[^>]*disabled/);
+  });
+
+  it('enables the attachment-base-path browse button when directory intake is available', () => {
+    const state = withStatus(
+      {
+        ...createInitialState(buildRuntime({ directoryIntakeAvailable: true })),
+        phase: 'selecting-input',
+        workerStatus: 'ready',
+      },
+      {
+        message: 'Upload a ZIP file to get started.',
+        severity: 'informational',
+        title: 'Ready to convert',
+        workflowStage: 'intake',
+      },
+    );
+    const view = renderAppView(state);
+
+    expect(view).toContain('id="attachment-base-path-browse-button"');
+    expect(view).toMatch(/id="attachment-base-path-browse-button"[^>]*aria-disabled="false"/);
+    expect(view).toContain('id="directory-picker-button"');
   });
 
   it('renders the queued-file state with enabled create action and hidden submit help', () => {

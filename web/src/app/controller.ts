@@ -134,6 +134,7 @@ function render(
 export interface Controller {
   getState: () => AppState;
   handleAttachmentBasePathInput: (value: string) => void;
+  handleAttachmentBasePathBrowse: () => Promise<string | undefined>;
   handleCreateXml: () => Promise<void>;
   handleDirectoryPick: () => void;
   handleDropZoneKeyDown: (event: KeyboardEvent) => void;
@@ -171,6 +172,30 @@ export function createController({
 
     handleAttachmentBasePathInput(value: string) {
       updateState((currentState) => withAttachmentBasePath(currentState, value), { render: false });
+    },
+
+    async handleAttachmentBasePathBrowse() {
+      try {
+        const handle = await pickDirectory();
+        const selectedBasePath = deriveAttachmentBasePathFromDirectoryHandle(handle);
+
+        if (selectedBasePath.length === 0) {
+          return undefined;
+        }
+
+        updateState(
+          (currentState) => withAttachmentBasePath(currentState, selectedBasePath),
+          { render: false },
+        );
+
+        return selectedBasePath;
+      } catch (error) {
+        if (isPickerAbortError(error)) {
+          return undefined;
+        }
+
+        return undefined;
+      }
     },
 
     async handleCreateXml() {
@@ -253,8 +278,12 @@ export function createController({
     async handleDirectoryPick() {
       try {
         const handle = await pickDirectory();
+        const effectiveBaseLibraryPath = resolveDirectoryBaseLibraryPath(getState(), handle);
         updateState((currentState) => withStatus(
-          withSelectedInput(currentState, `${handle.name}/`),
+          withSelectedInput(
+            withAttachmentBasePath(currentState, effectiveBaseLibraryPath),
+            `${handle.name}/`,
+          ),
           buildConvertingStatus(`${handle.name}/`),
         ));
 
@@ -264,7 +293,7 @@ export function createController({
         });
         const response = await workerClient.convertPreparedLibrary(
           library,
-          buildAttachmentOptions(getState()),
+          buildAttachmentOptions(effectiveBaseLibraryPath),
         );
 
         updateState((currentState) => withStatus(
@@ -394,6 +423,17 @@ export function attachController(root: HTMLElement, controller: Controller): voi
     syncCreateXmlActionState(root, controller.getState());
   });
 
+  const attachmentBasePathBrowseButton = root.querySelector<HTMLButtonElement>('#attachment-base-path-browse-button');
+  attachmentBasePathBrowseButton?.addEventListener('click', () => {
+    void controller.handleAttachmentBasePathBrowse().then((selectedBasePath) => {
+      if (selectedBasePath && attachmentBasePathInput) {
+        attachmentBasePathInput.value = selectedBasePath;
+      }
+
+      syncCreateXmlActionState(root, controller.getState());
+    });
+  });
+
   const dropZone = root.querySelector<HTMLElement>('#zip-dropzone');
   if (dropZone) {
     dropZone.addEventListener('keydown', (event) => controller.handleDropZoneKeyDown(event));
@@ -467,12 +507,25 @@ export function syncCreateXmlActionState(root: ParentNode, state: AppState): voi
   }
 }
 
-function buildAttachmentOptions(state: AppState): { baseLibraryPath: string } | undefined {
-  const baseLibraryPath = state.attachmentBasePath.trim();
+function buildAttachmentOptions(baseLibraryPath: string): { baseLibraryPath: string } | undefined {
+  const trimmedBaseLibraryPath = baseLibraryPath.trim();
 
-  return baseLibraryPath.length > 0
-    ? { baseLibraryPath }
+  return trimmedBaseLibraryPath.length > 0
+    ? { baseLibraryPath: trimmedBaseLibraryPath }
     : undefined;
+}
+
+function resolveDirectoryBaseLibraryPath(state: AppState, handle: { name: string }): string {
+  const manuallyProvidedBasePath = state.attachmentBasePath.trim();
+  if (manuallyProvidedBasePath.length > 0) {
+    return manuallyProvidedBasePath;
+  }
+
+  return deriveAttachmentBasePathFromDirectoryHandle(handle);
+}
+
+function deriveAttachmentBasePathFromDirectoryHandle(handle: { name: string }): string {
+  return handle.name.trim();
 }
 
 function resetFileInput(root: HTMLElement): void {

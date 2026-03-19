@@ -95,6 +95,7 @@ function renderInputSelectionPanel(state: AppState): string {
   const queuedZipFile = state.pendingFile;
   const hasAttachmentBasePath = state.attachmentBasePath.trim().length > 0;
   const canCreateXml = Boolean(queuedZipFile) && hasAttachmentBasePath;
+  const canBrowseLibraryFolder = state.runtime.directoryIntake.available;
   const dropzoneState = getDropzoneState(state);
   const fileSummary = queuedZipFile
     ? `${escapeHtml(queuedZipFile.name)} · ${escapeHtml(formatFileSize(queuedZipFile.size))}`
@@ -147,10 +148,11 @@ function renderInputSelectionPanel(state: AppState): string {
             aria-describedby="attachment-base-path-note submit-help"
           />
           <button
+            id="attachment-base-path-browse-button"
             class="button button--secondary"
             type="button"
-            disabled
-            aria-disabled="true"
+            ${canBrowseLibraryFolder ? '' : 'disabled'}
+            aria-disabled="${canBrowseLibraryFolder ? 'false' : 'true'}"
           >
             Browse to select library folder
           </button>

@@ -426,6 +426,128 @@ describe('createController', () => {
     );
   });
 
+  it('populates attachment base path from directory browse selection', async () => {
+    let state = createInitialState(buildRuntime());
+
+    const controller = createController({
+      download: vi.fn(),
+      getState: () => state,
+      pickDirectory: vi.fn(async () => ({
+        kind: 'directory',
+        name: 'MyLibrary.enlp',
+        values: async function* values() {
+          return;
+        },
+      })),
+      prepareInput: vi.fn(),
+      root: buildRoot(),
+      updateState: (nextStateOrUpdater) => {
+        state = typeof nextStateOrUpdater === 'function'
+          ? nextStateOrUpdater(state)
+          : nextStateOrUpdater;
+        return state;
+      },
+      workerClient: {
+        convertPreparedLibrary: vi.fn(),
+        dispose: vi.fn(),
+        initialise: vi.fn(),
+        queryPreparedLibrary: vi.fn(),
+      },
+    });
+
+    const selectedPath = await controller.handleAttachmentBasePathBrowse();
+
+    expect(selectedPath).toBe('MyLibrary.enlp');
+    expect(state.attachmentBasePath).toBe('MyLibrary.enlp');
+  });
+
+  it('falls back to selected directory name as baseLibraryPath when manual path is blank', async () => {
+    let state = createInitialState(buildRuntime());
+    const preparedLibrary = buildPreparedLibrary();
+    const prepareInput = vi.fn(async () => preparedLibrary);
+    const convertPreparedLibrary = vi.fn(async () => buildConvertResponse());
+
+    const controller = createController({
+      download: vi.fn(),
+      getState: () => state,
+      pickDirectory: vi.fn(async () => ({
+        kind: 'directory',
+        name: 'MyLibrary.enlp',
+        values: async function* values() {
+          return;
+        },
+      })),
+      prepareInput,
+      root: buildRoot(),
+      updateState: (nextStateOrUpdater) => {
+        state = typeof nextStateOrUpdater === 'function'
+          ? nextStateOrUpdater(state)
+          : nextStateOrUpdater;
+        return state;
+      },
+      workerClient: {
+        convertPreparedLibrary,
+        dispose: vi.fn(),
+        initialise: vi.fn(),
+        queryPreparedLibrary: vi.fn(),
+      },
+    });
+
+    await controller.handleDirectoryPick();
+
+    expect(prepareInput).toHaveBeenCalledWith({
+      handle: expect.objectContaining({ name: 'MyLibrary.enlp' }),
+      kind: 'directory-handle',
+    });
+    expect(convertPreparedLibrary).toHaveBeenCalledWith(
+      preparedLibrary,
+      { baseLibraryPath: 'MyLibrary.enlp' },
+    );
+    expect(state.attachmentBasePath).toBe('MyLibrary.enlp');
+  });
+
+  it('keeps manual attachment base path as precedence for directory conversion options', async () => {
+    let state = createInitialState(buildRuntime());
+    const preparedLibrary = buildPreparedLibrary();
+    const prepareInput = vi.fn(async () => preparedLibrary);
+    const convertPreparedLibrary = vi.fn(async () => buildConvertResponse());
+
+    const controller = createController({
+      download: vi.fn(),
+      getState: () => state,
+      pickDirectory: vi.fn(async () => ({
+        kind: 'directory',
+        name: 'MyLibrary.enlp',
+        values: async function* values() {
+          return;
+        },
+      })),
+      prepareInput,
+      root: buildRoot(),
+      updateState: (nextStateOrUpdater) => {
+        state = typeof nextStateOrUpdater === 'function'
+          ? nextStateOrUpdater(state)
+          : nextStateOrUpdater;
+        return state;
+      },
+      workerClient: {
+        convertPreparedLibrary,
+        dispose: vi.fn(),
+        initialise: vi.fn(),
+        queryPreparedLibrary: vi.fn(),
+      },
+    });
+
+    controller.handleAttachmentBasePathInput('  /Users/me/Documents/ManualPath.enlp  ');
+    await controller.handleDirectoryPick();
+
+    expect(convertPreparedLibrary).toHaveBeenCalledWith(
+      preparedLibrary,
+      { baseLibraryPath: '/Users/me/Documents/ManualPath.enlp' },
+    );
+    expect(state.attachmentBasePath).toBe('/Users/me/Documents/ManualPath.enlp');
+  });
+
   it('stores the export result after successful ZIP conversion', async () => {
     let state = createInitialState(buildRuntime());
     const preparedLibrary = buildPreparedLibrary();
