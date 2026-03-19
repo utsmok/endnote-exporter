@@ -22,10 +22,10 @@ test.describe('browser support matrix baseline', () => {
     await expect(page.getByText('Choose ZIP file')).toBeVisible();
 
     if (browserName === 'chromium') {
-      await expect(page.getByText('Direct-folder intake')).toBeVisible();
+      await expect(page.locator('.enhancement-eyebrow').filter({ hasText: 'Folder upload' })).toBeVisible();
       return;
     }
 
-    await expect(page.getByText('Direct-folder intake unavailable here')).toBeVisible();
+    await expect(page.locator('.enhancement-eyebrow').filter({ hasText: 'Folder upload not available' })).toBeVisible();
   });
 });

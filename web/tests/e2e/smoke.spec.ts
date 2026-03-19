@@ -25,7 +25,7 @@ test.describe('chromium smoke coverage', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme-preference', 'dark');
 
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Convert EndNote Libraries to Zotero XML' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Convert EndNote Library to XML' })).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme-preference', 'dark');
 
@@ -38,9 +38,9 @@ test.describe('chromium smoke coverage', () => {
     await gotoApp(page);
 
     await expect(page.getByRole('heading', { name: 'Start with a library ZIP' })).toBeVisible();
-    await expect(page.getByText('ZIP-first stays primary')).toBeVisible();
-    await expect(page.getByText('PDF links are opt-in')).toBeVisible();
-    await expect(page.getByText('Desktop review workspace')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'ZIP upload is the main method' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'PDF links are opt-in' })).toBeVisible();
+    await expect(page.getByText('Inline review')).toBeVisible();
   });
 
   test('supports a skip link and exposes live status text for keyboard users', async ({ page }) => {
@@ -51,7 +51,7 @@ test.describe('chromium smoke coverage', () => {
 
     await page.keyboard.press('Enter');
     await expect(page.locator('#main-content')).toBeFocused();
-    await expect(page.locator('[data-live-region="status"]')).toContainText('ZIP upload is the supported baseline');
+    await expect(page.locator('[data-live-region="status"]')).toContainText('Upload a ZIP file to get started');
   });
 
   test('downloads XML for the supported ZIP-first success path', async ({ page }) => {
@@ -74,7 +74,7 @@ test.describe('chromium smoke coverage', () => {
     await expect(summaryLine(page, 'Attachments detected')).toContainText('1');
     await expect(summaryLine(page, 'References with attachments')).toContainText('1');
     await expect(page.getByRole('heading', { name: 'Warnings' })).toBeVisible();
-    await expect(page.getByText('PDF links were omitted')).toBeVisible();
+    await expect(page.locator('.warning-summary__title').filter({ hasText: 'PDF links were not included' })).toBeVisible();
   });
 
   test('renders an inline exported-items workspace with DOI links and PDF status icons', async ({ page }) => {
@@ -97,7 +97,7 @@ test.describe('chromium smoke coverage', () => {
       'aria-label',
       /Verified PDF attachment present|No verified PDF attachment found/,
     );
-    await expect(page.locator('.items-table__caption')).toContainText('Inline desktop review workspace');
+    await expect(page.locator('.items-table__caption')).toContainText('Exported items from');
 
     const viewport = page.viewportSize();
     const workspaceBox = await page.locator('.review-workspace__table-card').boundingBox();
@@ -115,7 +115,7 @@ test.describe('chromium smoke coverage', () => {
 
     await expect(page.getByRole('button', { name: 'Download Zotero XML' })).toBeVisible();
     await expect(page.locator('.review-workspace__table-wrap')).toBeVisible();
-    await expect(page.locator('#review-workspace-description')).toContainText('larger text or browser zoom');
+    await expect(page.locator('#review-workspace-description')).toContainText('Review exported records');
   });
 
   test('surfaces a privacy-aligned session-loss notice after refresh clears in-memory review data', async ({ page }) => {
@@ -125,7 +125,7 @@ test.describe('chromium smoke coverage', () => {
 
     await expect(page.getByRole('heading', { name: 'Start with a library ZIP' })).toBeVisible();
     await expect(page.getByText('Previous review data was cleared')).toBeVisible();
-    await expect(page.getByText('intentionally not restored after refresh')).toBeVisible();
+    await expect(page.getByText('not restored after page reload')).toBeVisible();
   });
 
   test('broadly reduces motion when the user prefers reduced motion', async ({ page }) => {
@@ -145,10 +145,10 @@ test.describe('chromium smoke coverage', () => {
     await gotoApp(page);
     await uploadFixtureZip(page, 'malformed-archive.zip');
 
-    await expect(page.getByRole('heading', { name: 'Recovery required' })).toBeVisible();
+    await expect(page.locator('#recovery-title')).toBeVisible();
     await expect(page.locator('.error-list')).toContainText(
       'The uploaded file could not be opened as a ZIP archive.',
     );
-    await expect(page.getByRole('button', { name: 'Reset to supported baseline' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Start over' })).toBeVisible();
   });
 });
